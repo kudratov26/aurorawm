@@ -1,27 +1,25 @@
 use anyhow::Result;
 use smithay::backend::allocator::dmabuf::DmabufAllocator;
-use smithay::backend::allocator::gbm::{GbmAllocator, GbmDevice};
-use smithay::backend::allocator::gbm::GbmAllocatorFlags;
-use smithay::backend::drm::{DrmDevice, DrmNode, NodeType};
+use smithay::backend::allocator::gbm::GbmAllocator;
+use smithay::backend::drm::{DrmDevice, DrmNode};
 use smithay::backend::egl::{EGLDevice, EGLDisplay};
-use smithay::backend::renderer::gles2::Gles2Renderer;
-use smithay::backend::session::{Session, libseat::LibseatSession};
-use smithay::backend::session::SessionEvent;
+use smithay::backend::session::libseat::LibSeatSession;
 use smithay::reexports::calloop::LoopHandle;
 use smithay::utils::{Physical, Size};
 use std::collections::HashMap;
 use std::sync::Arc;
+use crate::state::AuroraState;
 
 pub struct OutputManager {
-    pub session: Arc<LibseatSession>,
+    pub session: Arc<LibSeatSession>,
     pub gpus: HashMap<DrmNode, Gpu>,
     pub outputs: HashMap<String, Output>,
 }
 
 pub struct Gpu {
     pub device: DrmDevice,
-    pub renderer: Gles2Renderer,
-    pub egl_display: EGLDisplay,
+    pub renderer: Option<smithay::backend::renderer::gles2::Gles2Renderer>,
+    pub egl_display: Option<EGLDisplay>,
 }
 
 pub struct Output {
@@ -40,9 +38,9 @@ pub struct Mode {
 }
 
 impl OutputManager {
-    pub fn new(loop_handle: &LoopHandle<()>) -> Result<Self> {
+    pub fn new(loop_handle: &LoopHandle<AuroraState>) -> Result<Self> {
         // Create session
-        let (session, notifier) = LibseatSession::new()?;
+        let (session, _notifier) = LibSeatSession::new()?;
         
         // Find DRM devices
         let mut gpus = HashMap::new();
@@ -57,20 +55,17 @@ impl OutputManager {
                     if let Ok(egl_display) = EGLDisplay::new(egl_device) {
                         // Create renderer
                         let gbm_device = device.gbm_device();
-                        let gbm = GbmAllocator::new(
-                            gbm_device,
-                            GbmAllocatorFlags::RENDERING,
-                        );
+                        let gbm = GbmAllocator::new(gbm_device, smithay::backend::allocator::gbm::GbmAllocatorFlags::RENDERING);
                         let dmabuf = DmabufAllocator::new(gbm.clone());
                         
                         let renderer = unsafe {
-                            Gles2Renderer::new(egl_display, gbm, dmabuf)?
+                            smithay::backend::renderer::gles2::Gles2Renderer::new(egl_display, gbm, dmabuf)
                         };
                         
                         gpus.insert(node, Gpu {
                             device,
-                            renderer,
-                            egl_display,
+                            renderer: renderer.ok(),
+                            egl_display: Some(egl_display),
                         });
                     }
                 }
@@ -103,7 +98,7 @@ impl OutputManager {
         self.outputs.values().next()
     }
     
-    pub fn get_renderer(&self) -> Option<&Gles2Renderer> {
-        self.gpus.values().next().map(|gpu| &gpu.renderer)
+    pub fn get_renderer(&self) -> Option<&smithay::backend::renderer::gles2::Gles2Renderer> {
+        self.gpus.values().next().and_then(|gpu| gpu.renderer.as_ref())
     }
 }

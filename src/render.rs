@@ -1,16 +1,14 @@
 use anyhow::Result;
 use smithay::backend::renderer::gles2::Gles2Renderer;
-use smithay::backend::renderer::{Renderer, Frame, ImportMem};
 use smithay::utils::{Rectangle, Size, Transform, Physical};
 use crate::output::OutputManager;
-use std::sync::Arc;
 
-pub struct Renderer {
+pub struct AuroraRenderer {
     pub renderer: Option<Gles2Renderer>,
     pub clear_color: [f32; 4],
 }
 
-impl Renderer {
+impl AuroraRenderer {
     pub fn new(output_manager: &OutputManager) -> Result<Self> {
         // Get the first GPU's renderer
         let renderer = output_manager.get_renderer().cloned();

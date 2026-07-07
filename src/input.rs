@@ -1,22 +1,19 @@
 use anyhow::Result;
 use smithay::reexports::calloop::LoopHandle;
-use smithay::backend::input::{InputBackend, InputEvent, KeyboardKeyEvent, PointerAxisEvent, PointerButtonEvent, PointerMotionEvent};
-use smithay::backend::libinput::{LibinputInputBackend, Libinput};
-use smithay::input::keyboard::{xkb, XkbContext, XkbKeymap, XkbState};
-use smithay::input::{Keycode, KeyboardHandle};
+use smithay::backend::input::{InputEvent, KeyboardKeyEvent, PointerAxisEvent, PointerButtonEvent, PointerMotionEvent};
+use smithay::backend::libinput::{LibinputInputBackend, libinput};
+use smithay::input::keyboard::{XkbContext};
 use crate::config::Config;
-use std::sync::Arc;
+use crate::state::AuroraState;
 
 pub struct InputManager {
-    pub libinput: Libinput,
+    pub libinput: libinput::Libinput,
     pub keyboard_state: KeyboardState,
     pub pointer_state: PointerState,
 }
 
 pub struct KeyboardState {
-    pub xkb_context: XkbContext,
-    pub keymap: XkbKeymap,
-    pub state: XkbState,
+    pub xkb_context: XkbContext<'static>,
     pub repeat_info: (i32, i32),
 }
 
@@ -26,29 +23,18 @@ pub struct PointerState {
 }
 
 impl InputManager {
-    pub fn new(loop_handle: &LoopHandle<()>, config: &Config) -> Result<Self> {
+    pub fn new(loop_handle: &LoopHandle<AuroraState>, config: &Config) -> Result<Self> {
         // Initialize libinput
-        let mut libinput = Libinput::new_from_udev()?;
+        let mut libinput = libinput::Libinput::new_from_udev()?;
         
         // Configure libinput
         libinput.assign_seat("seat-0")?;
         
         // Create keyboard state
         let xkb_context = XkbContext::new()?;
-        let keymap = XkbKeymap::new_from_names(
-            &xkb_context,
-            "",
-            &config.input.keyboard.xkb_layout,
-            "",
-            "",
-            &config.input.keyboard.xkb_options,
-        )?;
-        let state = XkbState::new(&keymap)?;
         
         let keyboard_state = KeyboardState {
             xkb_context,
-            keymap,
-            state,
             repeat_info: (config.input.keyboard.repeat_rate, config.input.keyboard.repeat_delay),
         };
         
@@ -96,25 +82,22 @@ impl InputManager {
         }
     }
     
-    fn handle_keyboard_event(event: KeyboardKeyEvent) {
-        let keycode = event.key_code();
-        let key_state = event.state();
-        
+    fn handle_keyboard_event(_event: impl KeyboardKeyEvent) {
         // Process key event through XKB
         // TODO: Implement key processing and command execution
     }
     
-    fn handle_pointer_motion(event: PointerMotionEvent) {
+    fn handle_pointer_motion(_event: impl PointerMotionEvent) {
         // Handle pointer motion
         // TODO: Implement pointer motion handling
     }
     
-    fn handle_pointer_button(event: PointerButtonEvent) {
+    fn handle_pointer_button(_event: impl PointerButtonEvent) {
         // Handle pointer button
         // TODO: Implement pointer button handling
     }
     
-    fn handle_pointer_axis(event: PointerAxisEvent) {
+    fn handle_pointer_axis(_event: impl PointerAxisEvent) {
         // Handle pointer axis (scroll)
         // TODO: Implement pointer axis handling
     }
