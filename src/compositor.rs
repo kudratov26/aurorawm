@@ -3,7 +3,7 @@ use smithay::reexports::calloop::LoopHandle;
 use smithay::wayland::compositor::CompositorState;
 use smithay::wayland::shell::xdg::XdgShellState;
 use smithay::wayland::shm::ShmState;
-use smithay::wayland::display::Display;
+use smithay::reexports::wayland_server::Display;
 use std::sync::Arc;
 use crate::state::AuroraState;
 

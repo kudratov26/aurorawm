@@ -8,10 +8,8 @@ use anyhow::Result;
 use smithay::reexports::calloop::{EventLoop, LoopHandle};
 use smithay::wayland::compositor::{CompositorHandler, CompositorState};
 use smithay::wayland::shell::xdg::{XdgShellHandler, XdgShellState};
-use smithay::wayland::compositor::WlSurface;
+use smithay::reexports::wayland_server::protocol::wl_surface::WlSurface;
 use smithay::wayland::shm::ShmHandler;
-use smithay::backend::allocator::BufferHandler;
-use std::sync::Arc;
 
 pub struct AuroraState {
     pub config: Config,
@@ -20,13 +18,15 @@ pub struct AuroraState {
     pub layout_engine: LayoutEngine,
     pub output_manager: OutputManager,
     pub renderer: AuroraRenderer,
-    pub event_loop: EventLoop<AuroraState>,
-    pub loop_handle: LoopHandle<AuroraState>,
 }
 
 impl CompositorHandler for AuroraState {
     fn compositor_state(&mut self) -> &mut CompositorState {
         &mut self.compositor.compositor_state
+    }
+    
+    fn client_compositor_state<'a>(&'a self, _client: &'a smithay::reexports::wayland_server::Client) -> &'a smithay::wayland::compositor::CompositorClientState {
+        unimplemented!()
     }
     
     fn commit(&mut self, _surface: &WlSurface) {
@@ -47,7 +47,7 @@ impl XdgShellHandler for AuroraState {
         // Handle new popup
     }
     
-    fn grab(&mut self, _surface: smithay::wayland::shell::xdg::PopupSurface, _seat: smithay::wayland::seat::WlSeat, _serial: smithay::utils::Serial) {
+    fn grab(&mut self, _surface: smithay::wayland::shell::xdg::PopupSurface, _seat: smithay::reexports::wayland_server::protocol::wl_seat::WlSeat, _serial: smithay::utils::Serial) {
         // Handle popup grab
     }
     
@@ -62,14 +62,10 @@ impl ShmHandler for AuroraState {
     }
 }
 
-impl BufferHandler for AuroraState {
-    fn buffer_destroyed(&mut self, _buffer: &smithay::backend::allocator::Buffer) {}
-}
-
 impl AuroraState {
     pub fn new(config: Config) -> Result<Self> {
         // Create event loop
-        let mut event_loop = EventLoop::<AuroraState>::try_new()?;
+        let event_loop = EventLoop::<AuroraState>::try_new()?;
         let loop_handle = event_loop.handle();
         
         // Initialize compositor
@@ -94,15 +90,16 @@ impl AuroraState {
             layout_engine,
             output_manager,
             renderer,
-            event_loop,
-            loop_handle,
         })
     }
     
     pub fn run(&mut self) -> Result<()> {
+        // Create event loop
+        let event_loop = EventLoop::<AuroraState>::try_new()?;
+        let loop_handle = event_loop.handle();
+        
         // Run the main event loop
-        let state = self;
-        self.event_loop.run(None, state, |state| {
+        event_loop.run(None, self, |state| {
             // Dispatch Wayland events
             state.compositor.flush_clients();
         })?;

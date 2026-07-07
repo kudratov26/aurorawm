@@ -1,6 +1,4 @@
-use smithay::wayland::shell::xdg::{XdgToplevelSurfaceData, XdgToplevel, ToplevelState};
-use smithay::wayland::compositor::SurfaceData;
-use smithay::utils::Serial;
+use smithay::wayland::shell::xdg::ToplevelState;
 
 pub struct ShellManager {
     // Manage XDG shell surfaces

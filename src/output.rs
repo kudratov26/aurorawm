@@ -9,6 +9,7 @@ use smithay::utils::{Physical, Size};
 use std::collections::HashMap;
 use std::sync::Arc;
 use crate::state::AuroraState;
+use smithay::backend::renderer::gles2::Gles2Renderer;
 
 pub struct OutputManager {
     pub session: Arc<LibSeatSession>,
@@ -18,7 +19,7 @@ pub struct OutputManager {
 
 pub struct Gpu {
     pub device: DrmDevice,
-    pub renderer: Option<smithay::backend::renderer::gles2::Gles2Renderer>,
+    pub renderer: Option<Gles2Renderer>,
     pub egl_display: Option<EGLDisplay>,
 }
 
@@ -55,11 +56,11 @@ impl OutputManager {
                     if let Ok(egl_display) = EGLDisplay::new(egl_device) {
                         // Create renderer
                         let gbm_device = device.gbm_device();
-                        let gbm = GbmAllocator::new(gbm_device, smithay::backend::allocator::gbm::GbmAllocatorFlags::RENDERING);
+                        let gbm = GbmAllocator::new(gbm_device, smithay::backend::allocator::gbm::GbmAllocator::RENDERING);
                         let dmabuf = DmabufAllocator::new(gbm.clone());
                         
                         let renderer = unsafe {
-                            smithay::backend::renderer::gles2::Gles2Renderer::new(egl_display, gbm, dmabuf)
+                            Gles2Renderer::new(egl_display, gbm, dmabuf)
                         };
                         
                         gpus.insert(node, Gpu {
@@ -98,7 +99,7 @@ impl OutputManager {
         self.outputs.values().next()
     }
     
-    pub fn get_renderer(&self) -> Option<&smithay::backend::renderer::gles2::Gles2Renderer> {
+    pub fn get_renderer(&self) -> Option<&Gles2Renderer> {
         self.gpus.values().next().and_then(|gpu| gpu.renderer.as_ref())
     }
 }

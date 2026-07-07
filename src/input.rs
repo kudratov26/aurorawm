@@ -1,13 +1,14 @@
 use anyhow::Result;
 use smithay::reexports::calloop::LoopHandle;
 use smithay::backend::input::{InputEvent, KeyboardKeyEvent, PointerAxisEvent, PointerButtonEvent, PointerMotionEvent};
-use smithay::backend::libinput::{LibinputInputBackend, libinput};
+use smithay::backend::libinput::LibinputInputBackend;
 use smithay::input::keyboard::{XkbContext};
 use crate::config::Config;
 use crate::state::AuroraState;
+use smithay::backend::libinput::Libinput as SmithayLibinput;
 
 pub struct InputManager {
-    pub libinput: libinput::Libinput,
+    pub libinput: SmithayLibinput,
     pub keyboard_state: KeyboardState,
     pub pointer_state: PointerState,
 }
@@ -25,7 +26,7 @@ pub struct PointerState {
 impl InputManager {
     pub fn new(loop_handle: &LoopHandle<AuroraState>, config: &Config) -> Result<Self> {
         // Initialize libinput
-        let mut libinput = libinput::Libinput::new_from_udev()?;
+        let mut libinput = SmithayLibinput::new_from_udev()?;
         
         // Configure libinput
         libinput.assign_seat("seat-0")?;
