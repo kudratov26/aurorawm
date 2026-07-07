@@ -1,0 +1,1042 @@
+rror[E0255]: the name `Renderer` is defined multiple times
+ --> src/render.rs:8:1
+  |
+3 | use smithay::backend::renderer::{Renderer, Frame, ImportMem};
+  |                                  -------- previous import of the trait `Renderer` here
+...
+8 | pub struct Renderer {
+  | ^^^^^^^^^^^^^^^^^^^ `Renderer` redefined here
+  |
+  = note: `Renderer` must be defined only once in the type namespace of this module
+help: you can use `as` to change the binding name of the import
+  |
+3 | use smithay::backend::renderer::{Renderer as OtherRenderer, Frame, ImportMem};
+  |                                           ++++++++++++++++
+
+error[E0432]: unresolved import `smithay::wayland::display`
+ --> src/compositor.rs:6:23
+  |
+6 | use smithay::wayland::display::Display;
+  |                       ^^^^^^^ could not find `display` in `wayland`
+
+error[E0432]: unresolved import `smithay::backend::libinput::Libinput`
+ --> src/input.rs:4:56
+  |
+4 | use smithay::backend::libinput::{LibinputInputBackend, Libinput};
+  |                                                        ^^^^^^^^ no `Libinput` in `backend::libinput`
+  |
+help: a similar name exists in the module
+  |
+4 - use smithay::backend::libinput::{LibinputInputBackend, Libinput};
+4 + use smithay::backend::libinput::{LibinputInputBackend, libinput};
+  |
+
+error[E0432]: unresolved imports `smithay::input::keyboard::XkbKeymap`, `smithay::input::keyboard::XkbState`
+ --> src/input.rs:5:49
+  |
+5 | use smithay::input::keyboard::{xkb, XkbContext, XkbKeymap, XkbState};
+  |                                                 ^^^^^^^^^  ^^^^^^^^ no `XkbState` in `input::keyboard`
+  |                                                 |
+  |                                                 no `XkbKeymap` in `input::keyboard`
+
+error[E0432]: unresolved import `smithay::input::Keycode`
+ --> src/input.rs:6:22
+  |
+6 | use smithay::input::{Keycode, KeyboardHandle};
+  |                      ^^^^^^^ no `Keycode` in `input`
+
+error[E0432]: unresolved import `smithay::backend::allocator::gbm::GbmAllocatorFlags`
+ --> src/output.rs:4:5
+  |
+4 | use smithay::backend::allocator::gbm::GbmAllocatorFlags;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `GbmAllocatorFlags` in `backend::allocator::gbm`
+  |
+help: a similar name exists in the module
+  |
+4 - use smithay::backend::allocator::gbm::GbmAllocatorFlags;
+4 + use smithay::backend::allocator::gbm::GbmAllocator;
+  |
+
+error[E0432]: unresolved import `smithay::backend::renderer::gles2`
+ --> src/output.rs:7:33
+  |
+7 | use smithay::backend::renderer::gles2::Gles2Renderer;
+  |                                 ^^^^^ could not find `gles2` in `renderer`
+
+error[E0432]: unresolved import `smithay::backend::session::libseat::LibseatSession`
+ --> src/output.rs:8:42
+  |
+8 | use smithay::backend::session::{Session, libseat::LibseatSession};
+  |                                          ^^^^^^^^^^^^^^^^^^^^^^^ no `LibseatSession` in `backend::session::libseat`
+  |
+help: a similar name exists in the module (notice the capitalization)
+  |
+8 - use smithay::backend::session::{Session, libseat::LibseatSession};
+8 + use smithay::backend::session::{Session, libseat::LibSeatSession};
+  |
+
+error[E0432]: unresolved import `smithay::backend::session::SessionEvent`
+ --> src/output.rs:9:5
+  |
+9 | use smithay::backend::session::SessionEvent;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `SessionEvent` in `backend::session`
+
+error[E0432]: unresolved import `smithay::backend::renderer::gles2`
+ --> src/render.rs:2:33
+  |
+2 | use smithay::backend::renderer::gles2::Gles2Renderer;
+  |                                 ^^^^^ could not find `gles2` in `renderer`
+
+error[E0432]: unresolved import `smithay::wayland::shell::xdg::XdgToplevel`
+ --> src/shell.rs:1:60
+  |
+1 | use smithay::wayland::shell::xdg::{XdgToplevelSurfaceData, XdgToplevel, ToplevelState};
+  |                                                            ^^^^^^^^^^^ no `XdgToplevel` in `wayland::shell::xdg`
+  |
+help: a similar name exists in the module
+  |
+1 - use smithay::wayland::shell::xdg::{XdgToplevelSurfaceData, XdgToplevel, ToplevelState};
+1 + use smithay::wayland::shell::xdg::{XdgToplevelSurfaceData, xdg_toplevel, ToplevelState};
+  |
+
+error[E0432]: unresolved import `smithay::wayland::compositor::Surface`
+  --> src/state.rs:11:5
+   |
+11 | use smithay::wayland::compositor::Surface;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `Surface` in `wayland::compositor`
+   |
+help: a similar name exists in the module
+   |
+11 | use smithay::wayland::compositor::WlSurface;
+   |                                   ++
+
+error[E0106]: missing lifetime specifier
+  --> src/input.rs:17:22
+   |
+17 |     pub xkb_context: XkbContext,
+   |                      ^^^^^^^^^^ expected named lifetime parameter
+   |
+help: consider introducing a named lifetime parameter
+   |
+16 ~ pub struct KeyboardState<'a> {
+17 ~     pub xkb_context: XkbContext<'a>,
+   |
+
+error[E0106]: missing lifetime specifier
+  --> src/state.rs:21:30
+   |
+21 |     pub event_loop: EventLoop<()>,
+   |                              ^ expected named lifetime parameter
+   |
+help: consider introducing a named lifetime parameter
+   |
+14 ~ pub struct AuroraState<'a> {
+15 |     pub config: Config,
+...
+20 |     pub renderer: Renderer,
+21 ~     pub event_loop: EventLoop<'a, ()>,
+   |
+
+error[E0106]: missing lifetime specifier
+  --> src/state.rs:22:32
+   |
+22 |     pub loop_handle: LoopHandle<()>,
+   |                                ^ expected named lifetime parameter
+   |
+help: consider introducing a named lifetime parameter
+   |
+14 ~ pub struct AuroraState<'a> {
+15 |     pub config: Config,
+...
+21 |     pub event_loop: EventLoop<()>,
+22 ~     pub loop_handle: LoopHandle<'a, ()>,
+   |
+
+error[E0603]: struct `KeyboardHandle` is private
+   --> src/input.rs:6:31
+    |
+  6 | use smithay::input::{Keycode, KeyboardHandle};
+    |                               ^^^^^^^^^^^^^^ private struct
+    |
+note: the struct `KeyboardHandle` is defined here
+   --> /home/culpe/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/smithay-0.7.0/src/input/mod.rs:131:40
+    |
+131 |     keyboard::{Error as KeyboardError, KeyboardHandle, KeyboardTarget, LedState},
+    |                                        ^^^^^^^^^^^^^^
+help: import `KeyboardHandle` directly
+    |
+  6 | use smithay::input::{Keycode, smithay::input::keyboard::KeyboardHandle};
+    |                               ++++++++++++++++++++++++++
+
+warning: unused import: `InputBackend`
+ --> src/input.rs:3:31
+  |
+3 | use smithay::backend::input::{InputBackend, InputEvent, KeyboardKeyEvent, PointerAxisEvent, PointerButtonEvent, PointerMotionEvent};
+  |                               ^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `xkb`
+ --> src/input.rs:5:32
+  |
+5 | use smithay::input::keyboard::{xkb, XkbContext, XkbKeymap, XkbState};
+  |                                ^^^
+
+warning: unused import: `std::sync::Arc`
+ --> src/input.rs:8:5
+  |
+8 | use std::sync::Arc;
+  |     ^^^^^^^^^^^^^^
+
+warning: unused imports: `BorderConfig` and `GapsConfig`
+ --> src/layout.rs:1:43
+  |
+1 | use crate::config::{Config, LayoutConfig, GapsConfig, BorderConfig};
+  |                                           ^^^^^^^^^^  ^^^^^^^^^^^^
+
+warning: unused import: `GbmDevice`
+ --> src/output.rs:3:54
+  |
+3 | use smithay::backend::allocator::gbm::{GbmAllocator, GbmDevice};
+  |                                                      ^^^^^^^^^
+
+warning: unused import: `NodeType`
+ --> src/output.rs:5:49
+  |
+5 | use smithay::backend::drm::{DrmDevice, DrmNode, NodeType};
+  |                                                 ^^^^^^^^
+
+warning: unused import: `Session`
+ --> src/output.rs:8:33
+  |
+8 | use smithay::backend::session::{Session, libseat::LibseatSession};
+  |                                 ^^^^^^^
+
+warning: unused imports: `ImportMem` and `Renderer`
+ --> src/render.rs:3:34
+  |
+3 | use smithay::backend::renderer::{Renderer, Frame, ImportMem};
+  |                                  ^^^^^^^^         ^^^^^^^^^
+
+warning: unused import: `std::sync::Arc`
+ --> src/render.rs:6:5
+  |
+6 | use std::sync::Arc;
+  |     ^^^^^^^^^^^^^^
+
+warning: unused import: `XdgToplevelSurfaceData`
+ --> src/shell.rs:1:36
+  |
+1 | use smithay::wayland::shell::xdg::{XdgToplevelSurfaceData, XdgToplevel, ToplevelState};
+  |                                    ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `smithay::wayland::compositor::SurfaceData`
+ --> src/shell.rs:2:5
+  |
+2 | use smithay::wayland::compositor::SurfaceData;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `smithay::utils::Serial`
+ --> src/shell.rs:3:5
+  |
+3 | use smithay::utils::Serial;
+  |     ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `std::sync::Arc`
+  --> src/state.rs:12:5
+   |
+12 | use std::sync::Arc;
+   |     ^^^^^^^^^^^^^^
+
+error[E0046]: not all trait items implemented, missing: `client_compositor_state`
+  --> src/state.rs:25:1
+   |
+25 | impl CompositorHandler for AuroraState {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `client_compositor_state` in implementation
+   |
+   = help: implement the missing item: `fn client_compositor_state(&self, _: &'a smithay::reexports::wayland_server::Client) -> &'a CompositorClientState { todo!() }`
+
+error[E0046]: not all trait items implemented, missing: `new_toplevel`, `new_popup`, `grab`, `reposition_request`
+  --> src/state.rs:36:1
+   |
+36 | impl XdgShellHandler for AuroraState {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `new_toplevel`, `new_popup`, `grab`, `reposition_request` in implementation
+   |
+   = help: implement the missing item: `fn new_toplevel(&mut self, _: ToplevelSurface) { todo!() }`
+   = help: implement the missing item: `fn new_popup(&mut self, _: smithay::wayland::shell::xdg::PopupSurface, _: PositionerState) { todo!() }`
+   = help: implement the missing item: `fn grab(&mut self, _: smithay::wayland::shell::xdg::PopupSurface, _: WlSeat, _: smithay::utils::Serial) { todo!() }`
+   = help: implement the missing item: `fn reposition_request(&mut self, _: smithay::wayland::shell::xdg::PopupSurface, _: PositionerState, _: u32) { todo!() }`
+
+error[E0782]: expected a type, found a trait
+  --> src/input.rs:99:37
+   |
+99 |     fn handle_keyboard_event(event: KeyboardKeyEvent) {
+   |                                     ^^^^^^^^^^^^^^^^
+   |
+help: use a new generic type parameter, constrained by `KeyboardKeyEvent`
+   |
+99 -     fn handle_keyboard_event(event: KeyboardKeyEvent) {
+99 +     fn handle_keyboard_event<T: KeyboardKeyEvent>(event: T) {
+   |
+help: you can also use an opaque type, but users won't be able to specify the type parameter when calling the `fn`, having to rely exclusively on type inference
+   |
+99 |     fn handle_keyboard_event(event: impl KeyboardKeyEvent) {
+   |                                     ++++
+help: alternatively, use a trait object to accept any type that implements `KeyboardKeyEvent`, accessing its methods at runtime using dynamic dispatch
+   |
+99 |     fn handle_keyboard_event(event: &dyn KeyboardKeyEvent) {
+   |                                     ++++
+
+error[E0782]: expected a type, found a trait
+   --> src/input.rs:107:37
+    |
+107 |     fn handle_pointer_motion(event: PointerMotionEvent) {
+    |                                     ^^^^^^^^^^^^^^^^^^
+    |
+help: use a new generic type parameter, constrained by `PointerMotionEvent`
+    |
+107 -     fn handle_pointer_motion(event: PointerMotionEvent) {
+107 +     fn handle_pointer_motion<T: PointerMotionEvent>(event: T) {
+    |
+help: you can also use an opaque type, but users won't be able to specify the type parameter when calling the `fn`, having to rely exclusively on type inference
+    |
+107 |     fn handle_pointer_motion(event: impl PointerMotionEvent) {
+    |                                     ++++
+help: alternatively, use a trait object to accept any type that implements `PointerMotionEvent`, accessing its methods at runtime using dynamic dispatch
+    |
+107 |     fn handle_pointer_motion(event: &dyn PointerMotionEvent) {
+    |                                     ++++
+
+error[E0782]: expected a type, found a trait
+   --> src/input.rs:112:37
+    |
+112 |     fn handle_pointer_button(event: PointerButtonEvent) {
+    |                                     ^^^^^^^^^^^^^^^^^^
+    |
+help: use a new generic type parameter, constrained by `PointerButtonEvent`
+    |
+112 -     fn handle_pointer_button(event: PointerButtonEvent) {
+112 +     fn handle_pointer_button<T: PointerButtonEvent>(event: T) {
+    |
+help: you can also use an opaque type, but users won't be able to specify the type parameter when calling the `fn`, having to rely exclusively on type inference
+    |
+112 |     fn handle_pointer_button(event: impl PointerButtonEvent) {
+    |                                     ++++
+help: alternatively, use a trait object to accept any type that implements `PointerButtonEvent`, accessing its methods at runtime using dynamic dispatch
+    |
+112 |     fn handle_pointer_button(event: &dyn PointerButtonEvent) {
+    |                                     ++++
+
+error[E0782]: expected a type, found a trait
+   --> src/input.rs:117:35
+    |
+117 |     fn handle_pointer_axis(event: PointerAxisEvent) {
+    |                                   ^^^^^^^^^^^^^^^^
+    |
+help: use a new generic type parameter, constrained by `PointerAxisEvent`
+    |
+117 -     fn handle_pointer_axis(event: PointerAxisEvent) {
+117 +     fn handle_pointer_axis<T: PointerAxisEvent>(event: T) {
+    |
+help: you can also use an opaque type, but users won't be able to specify the type parameter when calling the `fn`, having to rely exclusively on type inference
+    |
+117 |     fn handle_pointer_axis(event: impl PointerAxisEvent) {
+    |                                   ++++
+help: alternatively, use a trait object to accept any type that implements `PointerAxisEvent`, accessing its methods at runtime using dynamic dispatch
+    |
+117 |     fn handle_pointer_axis(event: &dyn PointerAxisEvent) {
+    |                                   ++++
+
+error[E0277]: the trait bound `(): GlobalDispatch<WlCompositor, ()>` is not satisfied
+   --> src/compositor.rs:22:55
+    |
+ 22 |         let compositor_state = CompositorState::new::<()>(&display);
+    |                                                       ^^ the trait `GlobalDispatch<WlCompositor, ()>` is not implemented for `()`
+    |
+note: there are multiple different versions of crate `wayland_server` in the dependency graph
+   --> /home/culpe/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wayland-server-0.31.13/src/global.rs:95:1
+    |
+ 95 | pub trait GlobalDispatch<I: Resource, GlobalData, State = Self>: Sized {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this is the expected trait
+    |
+   ::: /home/culpe/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wayland-server-0.30.1/src/global.rs:87:1
+    |
+ 87 | pub trait GlobalDispatch<I: Resource, GlobalData, State = Self>: Sized {
+    | ---------------------------------------------------------------------- this is the trait that was imported
+    = help: you can use `cargo tree` to explore your dependency tree
+    = help: the following other types implement trait `GlobalDispatch<I, GlobalData, State>`:
+              `AlphaModifierState` implements `GlobalDispatch<WpAlphaModifierV1, (), D>`
+              `CommitTimingManagerState` implements `GlobalDispatch<WpCommitTimingManagerV1, bool, D>`
+              `CompositorState` implements `GlobalDispatch<WlCompositor, (), D>`
+              `CompositorState` implements `GlobalDispatch<WlSubcompositor, (), D>`
+              `ContentTypeState` implements `GlobalDispatch<WpContentTypeManagerV1, (), D>`
+              `CursorShapeManagerState` implements `GlobalDispatch<WpCursorShapeManagerV1, (), D>`
+              `DataDeviceState` implements `GlobalDispatch<WlDataDeviceManager, (), D>`
+              `DmabufState` implements `GlobalDispatch<ZwpLinuxDmabufV1, DmabufGlobalData, D>`
+            and 40 others
+note: required by a bound in `CompositorState::new`
+   --> /home/culpe/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/smithay-0.7.0/src/wayland/compositor/mod.rs:682:12
+    |
+680 |     pub fn new<D>(display: &DisplayHandle) -> Self
+    |            --- required by a bound in this associated function
+681 |     where
+682 |         D: GlobalDispatch<WlCompositor, ()> + GlobalDispatch<WlSubcompositor, ()> + 'static,
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `CompositorState::new`
+    = note: the full name for the type has been written to '/home/culpe/aurorawm/target/release/deps/aurorawm-d84c8c816559cffd.long-type-2224421408642359921.txt'
+    = note: consider using `--verbose` to print the full type name to the console
+
+error[E0277]: the trait bound `(): GlobalDispatch<WlSubcompositor, ()>` is not satisfied
+   --> src/compositor.rs:22:55
+    |
+ 22 |         let compositor_state = CompositorState::new::<()>(&display);
+    |                                                       ^^ the trait `GlobalDispatch<WlSubcompositor, ()>` is not implemented for `()`
+    |
+note: there are multiple different versions of crate `wayland_server` in the dependency graph
+   --> /home/culpe/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wayland-server-0.31.13/src/global.rs:95:1
+    |
+ 95 | pub trait GlobalDispatch<I: Resource, GlobalData, State = Self>: Sized {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this is the expected trait
+    |
+   ::: /home/culpe/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wayland-server-0.30.1/src/global.rs:87:1
+    |
+ 87 | pub trait GlobalDispatch<I: Resource, GlobalData, State = Self>: Sized {
+    | ---------------------------------------------------------------------- this is the trait that was imported
+    = help: you can use `cargo tree` to explore your dependency tree
+    = help: the following other types implement trait `GlobalDispatch<I, GlobalData, State>`:
+              `AlphaModifierState` implements `GlobalDispatch<WpAlphaModifierV1, (), D>`
+              `CommitTimingManagerState` implements `GlobalDispatch<WpCommitTimingManagerV1, bool, D>`
+              `CompositorState` implements `GlobalDispatch<WlCompositor, (), D>`
+              `CompositorState` implements `GlobalDispatch<WlSubcompositor, (), D>`
+              `ContentTypeState` implements `GlobalDispatch<WpContentTypeManagerV1, (), D>`
+              `CursorShapeManagerState` implements `GlobalDispatch<WpCursorShapeManagerV1, (), D>`
+              `DataDeviceState` implements `GlobalDispatch<WlDataDeviceManager, (), D>`
+              `DmabufState` implements `GlobalDispatch<ZwpLinuxDmabufV1, DmabufGlobalData, D>`
+            and 40 others
+note: required by a bound in `CompositorState::new`
+   --> /home/culpe/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/smithay-0.7.0/src/wayland/compositor/mod.rs:682:47
+    |
+680 |     pub fn new<D>(display: &DisplayHandle) -> Self
+    |            --- required by a bound in this associated function
+681 |     where
+682 |         D: GlobalDispatch<WlCompositor, ()> + GlobalDispatch<WlSubcompositor, ()> + 'static,
+    |                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `CompositorState::new`
+    = note: the full name for the type has been written to '/home/culpe/aurorawm/target/release/deps/aurorawm-d84c8c816559cffd.long-type-2224421408642359921.txt'
+    = note: consider using `--verbose` to print the full type name to the console
+
+error[E0277]: the trait bound `(): GlobalDispatch<smithay::reexports::wayland_protocols::xdg::shell::server::xdg_wm_base::XdgWmBase, ()>` is not satisfied
+    --> src/compositor.rs:25:52
+     |
+  25 |         let xdg_shell_state = XdgShellState::new::<()>(&display);
+     |                                                    ^^ the trait `GlobalDispatch<smithay::reexports::wayland_protocols::xdg::shell::server::xdg_wm_base::XdgWmBase, ()>` is not implemented for `()`
+     |
+note: there are multiple different versions of crate `wayland_server` in the dependency graph
+    --> /home/culpe/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wayland-server-0.31.13/src/global.rs:95:1
+     |
+  95 | pub trait GlobalDispatch<I: Resource, GlobalData, State = Self>: Sized {
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this is the expected trait
+     |
+    ::: /home/culpe/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wayland-server-0.30.1/src/global.rs:87:1
+     |
+  87 | pub trait GlobalDispatch<I: Resource, GlobalData, State = Self>: Sized {
+     | ---------------------------------------------------------------------- this is the trait that was imported
+     = help: you can use `cargo tree` to explore your dependency tree
+     = help: the following other types implement trait `GlobalDispatch<I, GlobalData, State>`:
+               `AlphaModifierState` implements `GlobalDispatch<WpAlphaModifierV1, (), D>`
+               `CommitTimingManagerState` implements `GlobalDispatch<WpCommitTimingManagerV1, bool, D>`
+               `CompositorState` implements `GlobalDispatch<WlCompositor, (), D>`
+               `CompositorState` implements `GlobalDispatch<WlSubcompositor, (), D>`
+               `ContentTypeState` implements `GlobalDispatch<WpContentTypeManagerV1, (), D>`
+               `CursorShapeManagerState` implements `GlobalDispatch<WpCursorShapeManagerV1, (), D>`
+               `DataDeviceState` implements `GlobalDispatch<WlDataDeviceManager, (), D>`
+               `DmabufState` implements `GlobalDispatch<ZwpLinuxDmabufV1, DmabufGlobalData, D>`
+             and 40 others
+note: required by a bound in `XdgShellState::new`
+    --> /home/culpe/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/smithay-0.7.0/src/wayland/shell/xdg/mod.rs:1231:12
+     |
+1229 |     pub fn new<D>(display: &DisplayHandle) -> XdgShellState
+     |            --- required by a bound in this associated function
+1230 |     where
+1231 |         D: GlobalDispatch<XdgWmBase, ()> + 'static,
+     |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `XdgShellState::new`
+     = note: the full name for the type has been written to '/home/culpe/aurorawm/target/release/deps/aurorawm-d84c8c816559cffd.long-type-2224421408642359921.txt'
+     = note: consider using `--verbose` to print the full type name to the console
+
+error[E0277]: the trait bound `(): GlobalDispatch<WlShm, ()>` is not satisfied
+   --> src/compositor.rs:28:41
+    |
+ 28 |         let shm_state = ShmState::new::<()>(&display, vec![]);
+    |                                         ^^ the trait `GlobalDispatch<WlShm, ()>` is not implemented for `()`
+    |
+note: there are multiple different versions of crate `wayland_server` in the dependency graph
+   --> /home/culpe/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wayland-server-0.31.13/src/global.rs:95:1
+    |
+ 95 | pub trait GlobalDispatch<I: Resource, GlobalData, State = Self>: Sized {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this is the expected trait
+    |
+   ::: /home/culpe/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wayland-server-0.30.1/src/global.rs:87:1
+    |
+ 87 | pub trait GlobalDispatch<I: Resource, GlobalData, State = Self>: Sized {
+    | ---------------------------------------------------------------------- this is the trait that was imported
+    = help: you can use `cargo tree` to explore your dependency tree
+    = help: the following other types implement trait `GlobalDispatch<I, GlobalData, State>`:
+              `AlphaModifierState` implements `GlobalDispatch<WpAlphaModifierV1, (), D>`
+              `CommitTimingManagerState` implements `GlobalDispatch<WpCommitTimingManagerV1, bool, D>`
+              `CompositorState` implements `GlobalDispatch<WlCompositor, (), D>`
+              `CompositorState` implements `GlobalDispatch<WlSubcompositor, (), D>`
+              `ContentTypeState` implements `GlobalDispatch<WpContentTypeManagerV1, (), D>`
+              `CursorShapeManagerState` implements `GlobalDispatch<WpCursorShapeManagerV1, (), D>`
+              `DataDeviceState` implements `GlobalDispatch<WlDataDeviceManager, (), D>`
+              `DmabufState` implements `GlobalDispatch<ZwpLinuxDmabufV1, DmabufGlobalData, D>`
+            and 40 others
+note: required by a bound in `ShmState::new`
+   --> /home/culpe/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/smithay-0.7.0/src/wayland/shm/mod.rs:144:12
+    |
+142 |     pub fn new<D>(display: &DisplayHandle, formats: impl IntoIterator<Item = wl_shm::Format>) -> ShmState
+    |            --- required by a bound in this associated function
+143 |     where
+144 |         D: GlobalDispatch<WlShm, ()>
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `ShmState::new`
+    = note: the full name for the type has been written to '/home/culpe/aurorawm/target/release/deps/aurorawm-d84c8c816559cffd.long-type-2224421408642359921.txt'
+    = note: consider using `--verbose` to print the full type name to the console
+
+error[E0277]: the trait bound `(): Dispatch<WlShm, ()>` is not satisfied
+   --> src/compositor.rs:28:41
+    |
+ 28 |         let shm_state = ShmState::new::<()>(&display, vec![]);
+    |                                         ^^ the trait `Dispatch<WlShm, ()>` is not implemented for `()`
+    |
+note: there are multiple different versions of crate `wayland_server` in the dependency graph
+   --> /home/culpe/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wayland-server-0.31.13/src/dispatch.rs:89:1
+    |
+ 89 | pub trait Dispatch<I: Resource, UserData, State = Self>: Sized {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this is the expected trait
+    |
+   ::: /home/culpe/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wayland-server-0.30.1/src/dispatch.rs:87:1
+    |
+ 87 | pub trait Dispatch<I: Resource, UserData, State = Self>: Sized {
+    | -------------------------------------------------------------- this is the trait that was imported
+    = help: you can use `cargo tree` to explore your dependency tree
+    = help: the following other types implement trait `Dispatch<I, UserData, State>`:
+              `AlphaModifierState` implements `Dispatch<WpAlphaModifierSurfaceV1, AlphaModifierSurfaceUserData, D>`
+              `AlphaModifierState` implements `Dispatch<WpAlphaModifierV1, (), D>`
+              `CommitTimingManagerState` implements `Dispatch<WpCommitTimerV1, Weak<WlSurface>, D>`
+              `CommitTimingManagerState` implements `Dispatch<WpCommitTimingManagerV1, bool, D>`
+              `CompositorState` implements `Dispatch<WlCallback, (), D>`
+              `CompositorState` implements `Dispatch<WlCompositor, (), D>`
+              `CompositorState` implements `Dispatch<WlRegion, RegionUserData, D>`
+              `CompositorState` implements `Dispatch<WlSubcompositor, (), D>`
+            and 110 others
+note: required by a bound in `ShmState::new`
+   --> /home/culpe/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/smithay-0.7.0/src/wayland/shm/mod.rs:145:15
+    |
+142 |     pub fn new<D>(display: &DisplayHandle, formats: impl IntoIterator<Item = wl_shm::Format>) -> ShmState
+    |            --- required by a bound in this associated function
+...
+145 |             + Dispatch<WlShm, ()>
+    |               ^^^^^^^^^^^^^^^^^^^ required by this bound in `ShmState::new`
+    = note: the full name for the type has been written to '/home/culpe/aurorawm/target/release/deps/aurorawm-d84c8c816559cffd.long-type-8153418364846769132.txt'
+    = note: consider using `--verbose` to print the full type name to the console
+
+error[E0277]: the trait bound `(): Dispatch<WlShmPool, ShmPoolUserData>` is not satisfied
+   --> src/compositor.rs:28:41
+    |
+ 28 |         let shm_state = ShmState::new::<()>(&display, vec![]);
+    |                                         ^^ the trait `Dispatch<WlShmPool, ShmPoolUserData>` is not implemented for `()`
+    |
+note: there are multiple different versions of crate `wayland_server` in the dependency graph
+   --> /home/culpe/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wayland-server-0.31.13/src/dispatch.rs:89:1
+    |
+ 89 | pub trait Dispatch<I: Resource, UserData, State = Self>: Sized {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this is the expected trait
+    |
+   ::: /home/culpe/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wayland-server-0.30.1/src/dispatch.rs:87:1
+    |
+ 87 | pub trait Dispatch<I: Resource, UserData, State = Self>: Sized {
+    | -------------------------------------------------------------- this is the trait that was imported
+    = help: you can use `cargo tree` to explore your dependency tree
+    = help: the following other types implement trait `Dispatch<I, UserData, State>`:
+              `AlphaModifierState` implements `Dispatch<WpAlphaModifierSurfaceV1, AlphaModifierSurfaceUserData, D>`
+              `AlphaModifierState` implements `Dispatch<WpAlphaModifierV1, (), D>`
+              `CommitTimingManagerState` implements `Dispatch<WpCommitTimerV1, Weak<WlSurface>, D>`
+              `CommitTimingManagerState` implements `Dispatch<WpCommitTimingManagerV1, bool, D>`
+              `CompositorState` implements `Dispatch<WlCallback, (), D>`
+              `CompositorState` implements `Dispatch<WlCompositor, (), D>`
+              `CompositorState` implements `Dispatch<WlRegion, RegionUserData, D>`
+              `CompositorState` implements `Dispatch<WlSubcompositor, (), D>`
+            and 110 others
+note: required by a bound in `ShmState::new`
+   --> /home/culpe/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/smithay-0.7.0/src/wayland/shm/mod.rs:146:15
+    |
+142 |     pub fn new<D>(display: &DisplayHandle, formats: impl IntoIterator<Item = wl_shm::Format>) -> ShmState
+    |            --- required by a bound in this associated function
+...
+146 |             + Dispatch<WlShmPool, ShmPoolUserData>
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `ShmState::new`
+    = note: the full name for the type has been written to '/home/culpe/aurorawm/target/release/deps/aurorawm-d84c8c816559cffd.long-type-8153418364846769132.txt'
+    = note: consider using `--verbose` to print the full type name to the console
+
+error[E0277]: the trait bound `(): BufferHandler` is not satisfied
+   --> src/compositor.rs:28:41
+    |
+ 28 |         let shm_state = ShmState::new::<()>(&display, vec![]);
+    |                                         ^^ the trait `BufferHandler` is not implemented for `()`
+    |
+note: required by a bound in `ShmState::new`
+   --> /home/culpe/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/smithay-0.7.0/src/wayland/shm/mod.rs:147:15
+    |
+142 |     pub fn new<D>(display: &DisplayHandle, formats: impl IntoIterator<Item = wl_shm::Format>) -> ShmState
+    |            --- required by a bound in this associated function
+...
+147 |             + BufferHandler
+    |               ^^^^^^^^^^^^^ required by this bound in `ShmState::new`
+
+error[E0277]: the trait bound `(): ShmHandler` is not satisfied
+   --> src/compositor.rs:28:41
+    |
+ 28 |         let shm_state = ShmState::new::<()>(&display, vec![]);
+    |                                         ^^ the trait `ShmHandler` is not implemented for `()`
+    |
+note: required by a bound in `ShmState::new`
+   --> /home/culpe/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/smithay-0.7.0/src/wayland/shm/mod.rs:148:15
+    |
+142 |     pub fn new<D>(display: &DisplayHandle, formats: impl IntoIterator<Item = wl_shm::Format>) -> ShmState
+    |            --- required by a bound in this associated function
+...
+148 |             + ShmHandler
+    |               ^^^^^^^^^^ required by this bound in `ShmState::new`
+
+error[E0599]: no associated function or constant named `new` found for struct `ListeningSocketSource` in the current scope
+  --> src/compositor.rs:31:71
+   |
+31 |         let socket = smithay::wayland::socket::ListeningSocketSource::new("aurorawm-0")?;
+   |                                                                       ^^^ associated function or constant not found in `ListeningSocketSource`
+   |
+note: if you're trying to build a new `ListeningSocketSource` consider using one of the following associated functions:
+      ListeningSocketSource::new_auto
+      ListeningSocketSource::with_name
+  --> /home/culpe/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/smithay-0.7.0/src/wayland/socket.rs:65:5
+   |
+65 |     pub fn new_auto() -> Result<ListeningSocketSource, BindError> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+80 |     pub fn with_name(name: &str) -> Result<ListeningSocketSource, BindError> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no associated function or constant named `new` found for struct `XkbContext<'a>` in the current scope
+  --> src/input.rs:37:39
+   |
+37 |         let xkb_context = XkbContext::new()?;
+   |                                       ^^^ associated function or constant not found in `XkbContext<'_>`
+
+error[E0277]: `?` couldn't convert the error: `*mut input::ffi::libinput: std::marker::Send` is not satisfied
+  --> src/input.rs:64:11
+   |
+62 |           loop_handle.insert_source(backend, |event, _, _| {
+   |  _____________________-
+63 | |             Self::handle_input_event(event);
+64 | |         })?;
+   | |          -^ `*mut input::ffi::libinput` cannot be sent between threads safely
+   | |__________|
+   |            this can't be annotated with `?` because it has type `Result<_, InsertError<LibinputInputBackend>>`
+   |
+   = help: within `InsertError<LibinputInputBackend>`, the trait `std::marker::Send` is not implemented for `*mut input::ffi::libinput`
+   = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+note: required because it appears within the type `Libinput`
+  --> /home/culpe/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/input-0.9.1/src/context.rs:89:12
+   |
+89 | pub struct Libinput {
+   |            ^^^^^^^^
+note: required because it appears within the type `LibinputInputBackend`
+  --> /home/culpe/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/smithay-0.7.0/src/backend/libinput/mod.rs:30:12
+   |
+30 | pub struct LibinputInputBackend {
+   |            ^^^^^^^^^^^^^^^^^^^^
+note: required because it appears within the type `InsertError<LibinputInputBackend>`
+  --> /home/culpe/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/calloop-0.14.4/src/error.rs:93:12
+   |
+93 | pub struct InsertError<T> {
+   |            ^^^^^^^^^^^
+   = note: required for `anyhow::Error` to implement `From<InsertError<LibinputInputBackend>>`
+
+error[E0277]: `?` couldn't convert the error: `*mut input::ffi::libinput: std::marker::Sync` is not satisfied
+  --> src/input.rs:64:11
+   |
+62 |           loop_handle.insert_source(backend, |event, _, _| {
+   |  _____________________-
+63 | |             Self::handle_input_event(event);
+64 | |         })?;
+   | |          -^ `*mut input::ffi::libinput` cannot be shared between threads safely
+   | |__________|
+   |            this can't be annotated with `?` because it has type `Result<_, InsertError<LibinputInputBackend>>`
+   |
+   = help: within `InsertError<LibinputInputBackend>`, the trait `std::marker::Sync` is not implemented for `*mut input::ffi::libinput`
+   = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+note: required because it appears within the type `Libinput`
+  --> /home/culpe/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/input-0.9.1/src/context.rs:89:12
+   |
+89 | pub struct Libinput {
+   |            ^^^^^^^^
+note: required because it appears within the type `LibinputInputBackend`
+  --> /home/culpe/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/smithay-0.7.0/src/backend/libinput/mod.rs:30:12
+   |
+30 | pub struct LibinputInputBackend {
+   |            ^^^^^^^^^^^^^^^^^^^^
+note: required because it appears within the type `InsertError<LibinputInputBackend>`
+  --> /home/culpe/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/calloop-0.14.4/src/error.rs:93:12
+   |
+93 | pub struct InsertError<T> {
+   |            ^^^^^^^^^^^
+   = note: required for `anyhow::Error` to implement `From<InsertError<LibinputInputBackend>>`
+
+error[E0277]: `?` couldn't convert the error: `Rc<(dyn LibinputInterface + 'static)>: std::marker::Send` is not satisfied
+  --> src/input.rs:64:11
+   |
+62 |           loop_handle.insert_source(backend, |event, _, _| {
+   |  _____________________-
+63 | |             Self::handle_input_event(event);
+64 | |         })?;
+   | |          -^ `Rc<(dyn LibinputInterface + 'static)>` cannot be sent between threads safely
+   | |__________|
+   |            this can't be annotated with `?` because it has type `Result<_, InsertError<LibinputInputBackend>>`
+   |
+   = help: within `InsertError<LibinputInputBackend>`, the trait `std::marker::Send` is not implemented for `Rc<(dyn LibinputInterface + 'static)>`
+   = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+note: required because it appears within the type `std::option::Option<Rc<(dyn LibinputInterface + 'static)>>`
+  --> /rustc/ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96/library/core/src/option.rs:600:9
+note: required because it appears within the type `Libinput`
+  --> /home/culpe/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/input-0.9.1/src/context.rs:89:12
+   |
+89 | pub struct Libinput {
+   |            ^^^^^^^^
+note: required because it appears within the type `LibinputInputBackend`
+  --> /home/culpe/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/smithay-0.7.0/src/backend/libinput/mod.rs:30:12
+   |
+30 | pub struct LibinputInputBackend {
+   |            ^^^^^^^^^^^^^^^^^^^^
+note: required because it appears within the type `InsertError<LibinputInputBackend>`
+  --> /home/culpe/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/calloop-0.14.4/src/error.rs:93:12
+   |
+93 | pub struct InsertError<T> {
+   |            ^^^^^^^^^^^
+   = note: required for `anyhow::Error` to implement `From<InsertError<LibinputInputBackend>>`
+
+error[E0277]: `?` couldn't convert the error: `Rc<(dyn LibinputInterface + 'static)>: std::marker::Sync` is not satisfied
+  --> src/input.rs:64:11
+   |
+62 |           loop_handle.insert_source(backend, |event, _, _| {
+   |  _____________________-
+63 | |             Self::handle_input_event(event);
+64 | |         })?;
+   | |          -^ `Rc<(dyn LibinputInterface + 'static)>` cannot be shared between threads safely
+   | |__________|
+   |            this can't be annotated with `?` because it has type `Result<_, InsertError<LibinputInputBackend>>`
+   |
+   = help: within `InsertError<LibinputInputBackend>`, the trait `std::marker::Sync` is not implemented for `Rc<(dyn LibinputInterface + 'static)>`
+   = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+note: required because it appears within the type `std::option::Option<Rc<(dyn LibinputInterface + 'static)>>`
+  --> /rustc/ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96/library/core/src/option.rs:600:9
+note: required because it appears within the type `Libinput`
+  --> /home/culpe/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/input-0.9.1/src/context.rs:89:12
+   |
+89 | pub struct Libinput {
+   |            ^^^^^^^^
+note: required because it appears within the type `LibinputInputBackend`
+  --> /home/culpe/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/smithay-0.7.0/src/backend/libinput/mod.rs:30:12
+   |
+30 | pub struct LibinputInputBackend {
+   |            ^^^^^^^^^^^^^^^^^^^^
+note: required because it appears within the type `InsertError<LibinputInputBackend>`
+  --> /home/culpe/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/calloop-0.14.4/src/error.rs:93:12
+   |
+93 | pub struct InsertError<T> {
+   |            ^^^^^^^^^^^
+   = note: required for `anyhow::Error` to implement `From<InsertError<LibinputInputBackend>>`
+
+error[E0308]: mismatched types
+  --> src/input.rs:76:24
+   |
+76 |                 if let Some(key_event) = event {
+   |                        ^^^^^^^^^^^^^^^   ----- this expression has type `smithay::reexports::input::event::keyboard::KeyboardKeyEvent`
+   |                        |
+   |                        expected `KeyboardKeyEvent`, found `Option<_>`
+   |
+   = note: expected struct `smithay::reexports::input::event::keyboard::KeyboardKeyEvent`
+                found enum `std::option::Option<_>`
+
+error[E0308]: mismatched types
+  --> src/input.rs:81:24
+   |
+81 |                 if let Some(motion_event) = event {
+   |                        ^^^^^^^^^^^^^^^^^^   ----- this expression has type `smithay::reexports::input::event::pointer::PointerMotionEvent`
+   |                        |
+   |                        expected `PointerMotionEvent`, found `Option<_>`
+   |
+   = note: expected struct `smithay::reexports::input::event::pointer::PointerMotionEvent`
+                found enum `std::option::Option<_>`
+
+error[E0308]: mismatched types
+  --> src/input.rs:86:24
+   |
+86 |                 if let Some(button_event) = event {
+   |                        ^^^^^^^^^^^^^^^^^^   ----- this expression has type `smithay::reexports::input::event::pointer::PointerButtonEvent`
+   |                        |
+   |                        expected `PointerButtonEvent`, found `Option<_>`
+   |
+   = note: expected struct `smithay::reexports::input::event::pointer::PointerButtonEvent`
+                found enum `std::option::Option<_>`
+
+error[E0308]: mismatched types
+  --> src/input.rs:91:24
+   |
+91 |                 if let Some(axis_event) = event {
+   |                        ^^^^^^^^^^^^^^^^   ----- this expression has type `PointerScrollAxis`
+   |                        |
+   |                        expected `PointerScrollAxis`, found `Option<_>`
+   |
+   = note: expected enum `PointerScrollAxis`
+              found enum `std::option::Option<_>`
+
+warning: use of deprecated associated function `smithay::utils::Rectangle::<N, Kind>::from_loc_and_size`: use new or from_size
+  --> src/layout.rs:91:38
+   |
+91 |         let usable_area = Rectangle::from_loc_and_size(
+   |                                      ^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(deprecated)]` on by default
+
+warning: use of deprecated associated function `smithay::utils::Rectangle::<N, Kind>::from_loc_and_size`: use new or from_size
+   --> src/layout.rs:133:43
+    |
+133 |                 let geometry = Rectangle::from_loc_and_size(
+    |                                           ^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated associated function `smithay::utils::Rectangle::<N, Kind>::from_loc_and_size`: use new or from_size
+   --> src/layout.rs:143:43
+    |
+143 |                 let geometry = Rectangle::from_loc_and_size(
+    |                                           ^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated associated function `smithay::utils::Rectangle::<N, Kind>::from_loc_and_size`: use new or from_size
+   --> src/layout.rs:150:45
+    |
+150 |                 remaining_area = Rectangle::from_loc_and_size(
+    |                                             ^^^^^^^^^^^^^^^^^
+
+error[E0282]: type annotations needed for `smithay::utils::Rectangle<i32, _>`
+   --> src/layout.rs:133:21
+    |
+133 |                 let geometry = Rectangle::from_loc_and_size(
+    |                     ^^^^^^^^
+134 |                     Point::from((remaining_area.loc.x, remaining_area.loc.y)),
+    |                     --------------------------------------------------------- type must be known at this point
+    |
+help: consider giving `geometry` an explicit type, where the type for type parameter `Kind` is specified
+    |
+133 |                 let geometry: smithay::utils::Rectangle<_, Kind> = Rectangle::from_loc_and_size(
+    |                             ++++++++++++++++++++++++++++++++++++
+
+warning: use of deprecated associated function `smithay::utils::Rectangle::<N, Kind>::from_loc_and_size`: use new or from_size
+   --> src/layout.rs:168:39
+    |
+168 |             let geometry = Rectangle::from_loc_and_size(
+    |                                       ^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated associated function `smithay::utils::Rectangle::<N, Kind>::from_loc_and_size`: use new or from_size
+   --> src/layout.rs:181:43
+    |
+181 |                 let geometry = Rectangle::from_loc_and_size(
+    |                                           ^^^^^^^^^^^^^^^^^
+
+error[E0282]: type annotations needed for `smithay::utils::Rectangle<i32, _>`
+   --> src/layout.rs:168:17
+    |
+168 |             let geometry = Rectangle::from_loc_and_size(
+    |                 ^^^^^^^^
+169 |                 Point::from((area.loc.x, area.loc.y)),
+    |                 ------------------------------------- type must be known at this point
+    |
+help: consider giving `geometry` an explicit type, where the type for type parameter `Kind` is specified
+    |
+168 |             let geometry: smithay::utils::Rectangle<_, Kind> = Rectangle::from_loc_and_size(
+    |                         ++++++++++++++++++++++++++++++++++++
+
+warning: use of deprecated associated function `smithay::utils::Rectangle::<N, Kind>::from_loc_and_size`: use new or from_size
+   --> src/layout.rs:214:39
+    |
+214 |             let geometry = Rectangle::from_loc_and_size(
+    |                                       ^^^^^^^^^^^^^^^^^
+
+error[E0282]: type annotations needed for `smithay::utils::Rectangle<i32, _>`
+   --> src/layout.rs:214:17
+    |
+214 |               let geometry = Rectangle::from_loc_and_size(
+    |                   ^^^^^^^^
+215 | /                 Point::from((
+216 | |                     area.loc.x + col as i32 * column_width,
+217 | |                     area.loc.y + row as i32 * (window_height + gap),
+218 | |                 )),
+    | |__________________- type must be known at this point
+    |
+help: consider giving `geometry` an explicit type, where the type for type parameter `Kind` is specified
+    |
+214 |             let geometry: smithay::utils::Rectangle<_, Kind> = Rectangle::from_loc_and_size(
+    |                         ++++++++++++++++++++++++++++++++++++
+
+warning: use of deprecated associated function `smithay::utils::Rectangle::<N, Kind>::from_loc_and_size`: use new or from_size
+   --> src/layout.rs:241:39
+    |
+241 |             let geometry = Rectangle::from_loc_and_size(
+    |                                       ^^^^^^^^^^^^^^^^^
+
+error[E0282]: type annotations needed for `smithay::utils::Rectangle<i32, _>`
+   --> src/layout.rs:241:17
+    |
+241 |               let geometry = Rectangle::from_loc_and_size(
+    |                   ^^^^^^^^
+242 | /                 Point::from((
+243 | |                     area.loc.x + col * cell_width + gap / 2,
+244 | |                     area.loc.y + row * cell_height + gap / 2,
+245 | |                 )),
+    | |__________________- type must be known at this point
+    |
+help: consider giving `geometry` an explicit type, where the type for type parameter `Kind` is specified
+    |
+241 |             let geometry: smithay::utils::Rectangle<_, Kind> = Rectangle::from_loc_and_size(
+    |                         ++++++++++++++++++++++++++++++++++++
+
+error[E0277]: the trait bound `smithay::backend::drm::DrmNode: std::default::Default` is not satisfied
+  --> src/output.rs:51:62
+   |
+51 |         let drm_nodes = DrmNode::from_path("/dev/dri/card*").unwrap_or_default();
+   |                                                              ^^^^^^^^^^^^^^^^^ the trait `std::default::Default` is not implemented for `smithay::backend::drm::DrmNode`
+   |
+note: required by a bound in `std::result::Result::<T, E>::unwrap_or_default`
+  --> /rustc/ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96/library/core/src/result.rs:1265:4
+
+error[E0277]: `smithay::backend::drm::DrmNode` is not an iterator
+  --> src/output.rs:53:21
+   |
+53 |         for node in drm_nodes {
+   |                     ^^^^^^^^^ `smithay::backend::drm::DrmNode` is not an iterator
+   |
+   = help: the trait `Iterator` is not implemented for `smithay::backend::drm::DrmNode`
+   = note: required for `smithay::backend::drm::DrmNode` to implement `IntoIterator`
+
+error[E0308]: mismatched types
+   --> src/output.rs:54:54
+    |
+ 54 |             if let Ok(device) = DrmDevice::new(node, None) {
+    |                                 --------------       ^^^^ expected `bool`, found `Option<_>`
+    |                                 |
+    |                                 arguments to this function are incorrect
+    |
+    = note: expected type `bool`
+               found enum `std::option::Option<_>`
+note: associated function defined here
+   --> /home/culpe/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/smithay-0.7.0/src/backend/drm/device/mod.rs:185:12
+    |
+185 |     pub fn new(fd: DrmDeviceFd, disable_connectors: bool) -> Result<(Self, DrmDeviceNotifier), Error> {
+    |            ^^^
+help: use `Option::is_some` to test if the `Option` has a value
+    |
+ 54 |             if let Ok(device) = DrmDevice::new(node, None.is_some()) {
+    |                                                          ++++++++++
+
+error[E0599]: no associated function or constant named `from_node` found for struct `EGLDevice` in the current scope
+  --> src/output.rs:56:52
+   |
+56 |                 if let Ok(egl_device) = EGLDevice::from_node(node) {
+   |                                                    ^^^^^^^^^ associated function or constant not found in `EGLDevice`
+   |
+note: if you're trying to build a new `EGLDevice`, consider using `EGLDevice::device_for_display` which returns `std::result::Result<EGLDevice, smithay::backend::egl::Error>`
+  --> /home/culpe/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/smithay-0.7.0/src/backend/egl/device.rs:90:5
+   |
+90 |     pub fn device_for_display(display: &EGLDisplay) -> Result<EGLDevice, Error> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `gbm_device` found for tuple `(DrmDevice, DrmDeviceNotifier)` in the current scope
+  --> src/output.rs:59:49
+   |
+59 |                         let gbm_device = device.gbm_device();
+   |                                                 ^^^^^^^^^^ method not found in `(DrmDevice, DrmDeviceNotifier)`
+
+error[E0599]: no associated function or constant named `new` found for struct `DmabufAllocator<A>` in the current scope
+  --> src/output.rs:64:55
+   |
+64 |                         let dmabuf = DmabufAllocator::new(gbm.clone());
+   |                                                       ^^^ associated function or constant not found in `DmabufAllocator<_>`
+
+error[E0308]: mismatched types
+  --> src/output.rs:71:29
+   |
+71 | ...                   device,
+   |                       ^^^^^^ expected `DrmDevice`, found `(DrmDevice, DrmDeviceNotifier)`
+   |
+   = note: expected struct `DrmDevice`
+               found tuple `(DrmDevice, DrmDeviceNotifier)`
+
+error[E0277]: the trait bound `DrmDeviceFd: Eq` is not satisfied
+  --> src/output.rs:70:30
+   |
+70 |                         gpus.insert(node, Gpu {
+   |                              ^^^^^^ the trait `Eq` is not implemented for `DrmDeviceFd`
+   |
+note: required by a bound in `HashMap::<K, V, S, A>::insert`
+  --> /rustc/ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96/library/std/src/collections/hash/map.rs:1328:4
+
+error[E0277]: the trait bound `DrmDeviceFd: Hash` is not satisfied
+  --> src/output.rs:70:30
+   |
+70 |                         gpus.insert(node, Gpu {
+   |                              ^^^^^^ the trait `Hash` is not implemented for `DrmDeviceFd`
+   |
+note: required by a bound in `HashMap::<K, V, S, A>::insert`
+  --> /rustc/ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96/library/std/src/collections/hash/map.rs:1328:4
+
+error[E0308]: mismatched types
+  --> src/output.rs:82:13
+   |
+70 |                         gpus.insert(node, Gpu {
+   |                         ----        ---- this argument has type `DrmDeviceFd`...
+   |                         |
+   |                         ... which causes `gpus` to have type `HashMap<DrmDeviceFd, Gpu>`
+...
+82 |             gpus,
+   |             ^^^^ expected `HashMap<DrmNode, Gpu>`, found `HashMap<DrmDeviceFd, Gpu>`
+   |
+   = note: expected struct `HashMap<smithay::backend::drm::DrmNode, _>`
+              found struct `HashMap<DrmDeviceFd, _>`
+
+warning: use of deprecated associated function `smithay::utils::Rectangle::<N, Kind>::from_loc_and_size`: use new or from_size
+   --> src/render.rs:120:20
+    |
+120 |         Rectangle::from_loc_and_size(
+    |                    ^^^^^^^^^^^^^^^^^
+
+error[E0382]: use of moved value: `mode`
+  --> src/output.rs:93:43
+   |
+87 |     pub fn add_output(&mut self, name: String, mode: Mode, scale: u32) {
+   |                                                ---- move occurs because `mode` has type `output::Mode`, which does not implement the `Copy` trait
+...
+90 |             mode,
+   |             ---- value moved here
+...
+93 |             size: Size::from((mode.width, mode.height)),
+   |                                           ^^^^^^^^^^^ value used here after move
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+90 |             mode: mode.clone(),
+   |                 ++++++++++++++
+
+error[E0594]: cannot assign to `anim.progress`, which is behind a `&` reference
+   --> src/render.rs:107:13
+    |
+107 |             anim.progress += progress_step;
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `anim` is a `&` reference, so it cannot be written to
+
+Some errors have detailed explanations: E0046, E0106, E0255, E0277, E0282, E0308, E0382, E0432, E0594...
+For more information about an error, try `rustc --explain E0046`.
+warning: `aurorawm` (bin "aurorawm") generated 22 warnings
+error: could not compile `aurorawm` (bin "aurorawm") due to 56 previous errors; 22 warnings emitted
