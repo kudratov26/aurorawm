@@ -1,0 +1,13 @@
+[Unit]
+Description=AuroraWM Wayland Compositor
+Documentation=man:aurorawm(5)
+After=network.target user@1000.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/aurorawm
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
