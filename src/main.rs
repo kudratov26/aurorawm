@@ -1,5 +1,12 @@
+mod compositor;
 mod config;
+mod input;
+mod layout;
+mod output;
+mod render;
+mod shell;
 mod state;
+mod utils;
 
 use anyhow::Result;
 use env_logger::Env;
@@ -11,6 +18,7 @@ fn main() -> Result<()> {
     env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
     
     info!("Starting AuroraWM - A fast, reliable Wayland compositor");
+    info!("This requires Linux with DRM/KMS support");
     
     // Load configuration
     let config = config::load_config()?;

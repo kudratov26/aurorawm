@@ -45,8 +45,8 @@ impl InputManager {
         
         // Add libinput source to event loop
         let backend = LibinputInputBackend::new(libinput.clone());
-        loop_handle.insert_source(backend, |event, _, _| {
-            Self::handle_input_event(event);
+        loop_handle.insert_source(backend, |event, _, state| {
+            Self::handle_input_event(event, state);
         })?;
         
         Ok(Self {
@@ -56,48 +56,48 @@ impl InputManager {
         })
     }
     
-    fn handle_input_event(event: InputEvent<LibinputInputBackend>) {
+    fn handle_input_event(event: InputEvent<LibinputInputBackend>, state: &mut AuroraState) {
         match event {
             InputEvent::Keyboard { event } => {
                 if let Some(key_event) = event {
-                    Self::handle_keyboard_event(key_event);
+                    Self::handle_keyboard_event(key_event, state);
                 }
             }
             InputEvent::PointerMotion { event } => {
                 if let Some(motion_event) = event {
-                    Self::handle_pointer_motion(motion_event);
+                    Self::handle_pointer_motion(motion_event, state);
                 }
             }
             InputEvent::PointerButton { event } => {
                 if let Some(button_event) = event {
-                    Self::handle_pointer_button(button_event);
+                    Self::handle_pointer_button(button_event, state);
                 }
             }
             InputEvent::PointerAxis { event } => {
                 if let Some(axis_event) = event {
-                    Self::handle_pointer_axis(axis_event);
+                    Self::handle_pointer_axis(axis_event, state);
                 }
             }
             _ => {}
         }
     }
     
-    fn handle_keyboard_event(_event: impl KeyboardKeyEvent) {
+    fn handle_keyboard_event(_event: impl KeyboardKeyEvent, _state: &mut AuroraState) {
         // Process key event through XKB
         // TODO: Implement key processing and command execution
     }
     
-    fn handle_pointer_motion(_event: impl PointerMotionEvent) {
+    fn handle_pointer_motion(_event: impl PointerMotionEvent, _state: &mut AuroraState) {
         // Handle pointer motion
         // TODO: Implement pointer motion handling
     }
     
-    fn handle_pointer_button(_event: impl PointerButtonEvent) {
+    fn handle_pointer_button(_event: impl PointerButtonEvent, _state: &mut AuroraState) {
         // Handle pointer button
         // TODO: Implement pointer button handling
     }
     
-    fn handle_pointer_axis(_event: impl PointerAxisEvent) {
+    fn handle_pointer_axis(_event: impl PointerAxisEvent, _state: &mut AuroraState) {
         // Handle pointer axis (scroll)
         // TODO: Implement pointer axis handling
     }

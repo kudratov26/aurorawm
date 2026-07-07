@@ -38,7 +38,7 @@ pub struct Mode {
 }
 
 impl OutputManager {
-    pub fn new(loop_handle: &LoopHandle<AuroraState>) -> Result<Self> {
+    pub fn new(_loop_handle: &LoopHandle<AuroraState>) -> Result<Self> {
         // Create session
         let (session, _notifier) = LibSeatSession::new()?;
         
