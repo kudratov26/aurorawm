@@ -11,8 +11,8 @@ categories = ["gui"]
 
 [dependencies]
 smithay = { version = "0.7", features = ["backend_winit", "renderer_gl", "backend_udev", "backend_libinput", "backend_session"] }
-wayland-server = "0.30"
-wayland-sys = "0.30"
+wayland-server = "0.31"
+wayland-sys = "0.31"
 wayland-backend = "0.3"
 wayland-protocols = { version = "0.31", features = ["server", "staging"] }
 wayland-protocols-wlr = { version = "0.2", features = ["server"] }
