@@ -77,18 +77,6 @@ impl OutputManager {
             }
         }
         
-        // Add session notifier to event loop
-        loop_handle.insert_source(notifier, |event, _, _| {
-            match event {
-                SessionEvent::ActivateSeat { .. } => {
-                    // Handle seat activation
-                }
-                SessionEvent::PauseSeat { .. } => {
-                    // Handle seat pause
-                }
-            }
-        })?;
-        
         Ok(Self {
             session: Arc::new(session),
             gpus,

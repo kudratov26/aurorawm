@@ -73,25 +73,21 @@ impl InputManager {
     fn handle_input_event(event: InputEvent<LibinputInputBackend>) {
         match event {
             InputEvent::Keyboard { event } => {
-                // Handle keyboard event
                 if let Some(key_event) = event {
                     Self::handle_keyboard_event(key_event);
                 }
             }
             InputEvent::PointerMotion { event } => {
-                // Handle pointer motion
                 if let Some(motion_event) = event {
                     Self::handle_pointer_motion(motion_event);
                 }
             }
             InputEvent::PointerButton { event } => {
-                // Handle pointer button
                 if let Some(button_event) = event {
                     Self::handle_pointer_button(button_event);
                 }
             }
             InputEvent::PointerAxis { event } => {
-                // Handle pointer axis (scroll)
                 if let Some(axis_event) = event {
                     Self::handle_pointer_axis(axis_event);
                 }

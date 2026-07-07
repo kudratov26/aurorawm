@@ -32,9 +32,9 @@ impl AuroraCompositor {
         
         // Add socket source to event loop
         let display_clone = display.clone();
-        loop_handle.insert_source(socket, move |stream, _, _| {
+        loop_handle.insert_source(socket, move |client, _, _| {
             // Client will be handled by the display
-            let _ = display_clone.insert_client(stream, Arc::new(()));
+            let _ = display_clone.insert_client(client, Arc::new(()));
         })?;
         
         Ok(Self {
