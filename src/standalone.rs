@@ -167,8 +167,9 @@ pub fn run_standalone(config: Config) -> Result<(), Box<dyn std::error::Error>> 
         running: true,
         start_time: Instant::now(),
         last_cursor_pos: Point::from((0.0f64, 0.0f64)),
-        pending_move: None,
-        pending_resize: None,
+        mouse_mode: crate::state::MouseMode::None,
+        drag_window: None,
+        drag_offset: (0, 0).into(),
     };
 
     state.space.map_output(&state.output, (0, 0));
@@ -250,36 +251,92 @@ pub fn run_standalone(config: Config) -> Result<(), Box<dyn std::error::Error>> 
                         );
                     }
                     libinput_rs::Event::Pointer(ptr_event) => match ptr_event {
-                        libinput_rs::event::PointerEvent::Motion(abs_event) => {
-                            let dx = abs_event.dx();
-                            let dy = abs_event.dy();
+                        libinput_rs::event::PointerEvent::Motion(motion) => {
+                            let dx = motion.dx();
+                            let dy = motion.dy();
                             state.last_cursor_pos = Point::from((
                                 state.last_cursor_pos.x + dx,
                                 state.last_cursor_pos.y + dy,
                             ));
 
-                            if let Some((_window, _location)) =
-                                state.space.element_under(state.last_cursor_pos)
-                            {
+                            if state.mouse_mode == crate::state::MouseMode::Moving {
+                                if let Some(window) = state.drag_window.clone() {
+                                    let new_pos = state.last_cursor_pos.to_i32_round()
+                                        - state.drag_offset;
+                                    state.space.map_element(window, new_pos, false);
+                                }
                             }
                         }
-                        libinput_rs::event::PointerEvent::Button(_btn_event) => {
-                            let clicked = state
-                                .space
-                                .element_under(state.last_cursor_pos)
-                                .map(|(w, _)| w.clone());
+                        libinput_rs::event::PointerEvent::MotionAbsolute(abs_event) => {
+                            let abs_x = abs_event.absolute_x_transformed(
+                                state
+                                    .output
+                                    .current_mode()
+                                    .map(|m| m.size.w as u32)
+                                    .unwrap_or(1920),
+                            );
+                            let abs_y = abs_event.absolute_y_transformed(
+                                state
+                                    .output
+                                    .current_mode()
+                                    .map(|m| m.size.h as u32)
+                                    .unwrap_or(1080),
+                            );
+                            state.last_cursor_pos = Point::from((abs_x, abs_y));
 
-                            if let Some(window) = clicked {
-                                state.space.raise_element(&window, true);
-                                if let Some(toplevel) = window.toplevel() {
-                                    let surface = toplevel.wl_surface().clone();
-                                    if let Some(keyboard) = state.seat.get_keyboard() {
-                                        keyboard.set_focus(
-                                            &mut state,
-                                            Some(surface),
-                                            0.into(),
-                                        );
+                            if state.mouse_mode == crate::state::MouseMode::Moving {
+                                if let Some(window) = state.drag_window.clone() {
+                                    let new_pos = state.last_cursor_pos.to_i32_round()
+                                        - state.drag_offset;
+                                    state.space.map_element(window, new_pos, false);
+                                }
+                            }
+                        }
+                        libinput_rs::event::PointerEvent::Button(btn_event) => {
+                            let is_pressed = btn_event.button_state()
+                                == libinput_rs::event::pointer::ButtonState::Pressed;
+                            let is_super_held =
+                                input_manager.pressed_keys.contains(&64);
+
+                            if is_pressed {
+                                let clicked = state
+                                    .space
+                                    .element_under(state.last_cursor_pos)
+                                    .map(|(w, _)| w.clone());
+
+                                if let Some(window) = clicked {
+                                    state.space.raise_element(&window, true);
+                                    if let Some(toplevel) = window.toplevel() {
+                                        let surface = toplevel.wl_surface().clone();
+                                        if let Some(keyboard) = state.seat.get_keyboard() {
+                                            keyboard.set_focus(
+                                                &mut state,
+                                                Some(surface),
+                                                0.into(),
+                                            );
+                                        }
                                     }
+
+                                    if is_super_held {
+                                        let cursor_geo =
+                                            state.last_cursor_pos.to_i32_round();
+                                        let win_loc = state
+                                            .space
+                                            .element_location(&window)
+                                            .unwrap_or((0, 0).into());
+                                        state.mouse_mode =
+                                            crate::state::MouseMode::Moving;
+                                        state.drag_window = Some(window);
+                                        state.drag_offset = cursor_geo - win_loc;
+                                    }
+                                }
+                            } else {
+                                if state.mouse_mode
+                                    != crate::state::MouseMode::None
+                                {
+                                    state.mouse_mode =
+                                        crate::state::MouseMode::None;
+                                    state.drag_window = None;
                                 }
                             }
                         }

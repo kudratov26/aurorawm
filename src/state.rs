@@ -33,6 +33,13 @@ use smithay::{
 use crate::config::Config;
 use crate::layout::LayoutEngine;
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum MouseMode {
+    None,
+    Moving,
+    Resizing,
+}
+
 pub struct AuroraState {
     pub config: Config,
     pub compositor_state: CompositorState,
@@ -48,8 +55,9 @@ pub struct AuroraState {
     pub running: bool,
     pub start_time: Instant,
     pub last_cursor_pos: Point<f64, Logical>,
-    pub pending_move: Option<Window>,
-    pub pending_resize: Option<Window>,
+    pub mouse_mode: MouseMode,
+    pub drag_window: Option<Window>,
+    pub drag_offset: Point<i32, Logical>,
 }
 
 impl BufferHandler for AuroraState {

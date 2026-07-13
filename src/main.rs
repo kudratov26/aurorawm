@@ -12,7 +12,7 @@ use std::time::Instant;
 use smithay::{
     backend::{
         input::{
-            AbsolutePositionEvent, InputEvent, KeyboardKeyEvent,
+            AbsolutePositionEvent, ButtonState, InputEvent, KeyboardKeyEvent, PointerButtonEvent,
         },
         renderer::{
             element::{
@@ -134,8 +134,9 @@ pub fn run_winit(config: Config) -> Result<(), Box<dyn std::error::Error>> {
         running: true,
         start_time: Instant::now(),
         last_cursor_pos: Point::from((0.0, 0.0)),
-        pending_move: None,
-        pending_resize: None,
+        mouse_mode: crate::state::MouseMode::None,
+        drag_window: None,
+        drag_offset: (0, 0).into(),
     };
 
     state.space.map_output(&state.output, (0, 0));
@@ -181,20 +182,50 @@ pub fn run_winit(config: Config) -> Result<(), Box<dyn std::error::Error>> {
                         .unwrap_or((1280, 800).into());
                     let pos = event.position_transformed(size);
                     state.last_cursor_pos = pos;
-                }
-                InputEvent::PointerButton { event: _event } => {
-                    let clicked = state
-                        .space
-                        .element_under(state.last_cursor_pos)
-                        .map(|(w, _)| w.clone());
 
-                    if let Some(window) = clicked {
-                        state.space.raise_element(&window, true);
-                        if let Some(toplevel) = window.toplevel() {
-                            let surface = toplevel.wl_surface().clone();
-                            if let Some(keyboard) = state.seat.get_keyboard() {
-                                keyboard.set_focus(&mut state, Some(surface), 0.into());
+                    if state.mouse_mode == crate::state::MouseMode::Moving {
+                        if let Some(window) = state.drag_window.clone() {
+                            let new_pos = state.last_cursor_pos.to_i32_round()
+                                - state.drag_offset;
+                            state.space.map_element(window, new_pos, false);
+                        }
+                    }
+                }
+                InputEvent::PointerButton { event } => {
+                    let btn_state = event.state();
+
+                    if btn_state == ButtonState::Pressed {
+                        let is_super_held = input_manager.pressed_keys.contains(&64);
+
+                        let clicked = state
+                            .space
+                            .element_under(state.last_cursor_pos)
+                            .map(|(w, _)| w.clone());
+
+                        if let Some(window) = clicked {
+                            state.space.raise_element(&window, true);
+                            if let Some(toplevel) = window.toplevel() {
+                                let surface = toplevel.wl_surface().clone();
+                                if let Some(keyboard) = state.seat.get_keyboard() {
+                                    keyboard.set_focus(&mut state, Some(surface), 0.into());
+                                }
                             }
+
+                            if is_super_held {
+                                let cursor_geo = state.last_cursor_pos.to_i32_round();
+                                let win_loc = state
+                                    .space
+                                    .element_location(&window)
+                                    .unwrap_or((0, 0).into());
+                                state.mouse_mode = crate::state::MouseMode::Moving;
+                                state.drag_window = Some(window);
+                                state.drag_offset = cursor_geo - win_loc;
+                            }
+                        }
+                    } else {
+                        if state.mouse_mode != crate::state::MouseMode::None {
+                            state.mouse_mode = crate::state::MouseMode::None;
+                            state.drag_window = None;
                         }
                     }
                 }
