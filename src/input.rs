@@ -1,105 +1,84 @@
-use anyhow::Result;
-use smithay::reexports::calloop::LoopHandle;
-use smithay::backend::input::{InputEvent, KeyboardKeyEvent, PointerAxisEvent, PointerButtonEvent, PointerMotionEvent};
-use smithay::backend::libinput::LibinputInputBackend;
-use smithay::input::keyboard::{XkbContext};
-use crate::config::Config;
+use std::collections::HashSet;
+use std::process::Command;
+
+use smithay::backend::input::{KeyState, Keycode};
+
 use crate::state::AuroraState;
-use smithay::backend::libinput::Libinput as SmithayLibinput;
 
 pub struct InputManager {
-    pub libinput: SmithayLibinput,
-    pub keyboard_state: KeyboardState,
-    pub pointer_state: PointerState,
-}
-
-pub struct KeyboardState {
-    pub xkb_context: XkbContext<'static>,
-    pub repeat_info: (i32, i32),
-}
-
-pub struct PointerState {
-    pub position: (f64, f64),
-    pub buttons: u32,
+    pub pressed_keys: HashSet<u32>,
 }
 
 impl InputManager {
-    pub fn new(loop_handle: &LoopHandle<AuroraState>, config: &Config) -> Result<Self> {
-        // Initialize libinput
-        let mut libinput = SmithayLibinput::new_from_udev()?;
-        
-        // Configure libinput
-        libinput.assign_seat("seat-0")?;
-        
-        // Create keyboard state
-        let xkb_context = XkbContext::new()?;
-        
-        let keyboard_state = KeyboardState {
-            xkb_context,
-            repeat_info: (config.input.keyboard.repeat_rate, config.input.keyboard.repeat_delay),
-        };
-        
-        let pointer_state = PointerState {
-            position: (0.0, 0.0),
-            buttons: 0,
-        };
-        
-        // Add libinput source to event loop
-        let backend = LibinputInputBackend::new(libinput.clone());
-        loop_handle.insert_source(backend, |event, _, state| {
-            Self::handle_input_event(event, state);
-        })?;
-        
-        Ok(Self {
-            libinput,
-            keyboard_state,
-            pointer_state,
-        })
-    }
-    
-    fn handle_input_event(event: InputEvent<LibinputInputBackend>, state: &mut AuroraState) {
-        match event {
-            InputEvent::Keyboard { event } => {
-                if let Some(key_event) = event {
-                    Self::handle_keyboard_event(key_event, state);
-                }
-            }
-            InputEvent::PointerMotion { event } => {
-                if let Some(motion_event) = event {
-                    Self::handle_pointer_motion(motion_event, state);
-                }
-            }
-            InputEvent::PointerButton { event } => {
-                if let Some(button_event) = event {
-                    Self::handle_pointer_button(button_event, state);
-                }
-            }
-            InputEvent::PointerAxis { event } => {
-                if let Some(axis_event) = event {
-                    Self::handle_pointer_axis(axis_event, state);
-                }
-            }
-            _ => {}
+    pub fn new() -> Self {
+        Self {
+            pressed_keys: HashSet::new(),
         }
     }
-    
-    fn handle_keyboard_event(_event: impl KeyboardKeyEvent, _state: &mut AuroraState) {
-        // Process key event through XKB
-        // TODO: Implement key processing and command execution
+
+    pub fn handle_keyboard_event(
+        &mut self,
+        state: &mut AuroraState,
+        keycode: Keycode,
+        key_state: KeyState,
+    ) {
+        let key: u32 = keycode.raw();
+
+        match key_state {
+            KeyState::Pressed => {
+                self.pressed_keys.insert(key);
+
+                if key == 1 {
+                    state.running = false;
+                    return;
+                }
+
+                self.check_keybindings(state);
+            }
+            KeyState::Released => {
+                self.pressed_keys.remove(&key);
+            }
+        }
     }
-    
-    fn handle_pointer_motion(_event: impl PointerMotionEvent, _state: &mut AuroraState) {
-        // Handle pointer motion
-        // TODO: Implement pointer motion handling
+
+    fn check_keybindings(&self, state: &AuroraState) {
+        let pressed: HashSet<String> = self.pressed_keys.iter()
+            .map(|k| keycode_to_name(*k))
+            .collect();
+
+        for binding in &state.config.keybindings.bindings {
+            let required: HashSet<String> = binding.keys.iter()
+                .map(|k| k.to_lowercase())
+                .collect();
+
+            if required.iter().all(|k| pressed.contains(k)) {
+                execute_command(&binding.command);
+            }
+        }
     }
-    
-    fn handle_pointer_button(_event: impl PointerButtonEvent, _state: &mut AuroraState) {
-        // Handle pointer button
-        // TODO: Implement pointer button handling
+}
+
+fn execute_command(command: &str) {
+    match command {
+        "close" => {}
+        _ => {
+            let _ = Command::new("sh")
+                .arg("-c")
+                .arg(command)
+                .spawn();
+        }
     }
-    
-    fn handle_pointer_axis(_event: impl PointerAxisEvent, _state: &mut AuroraState) {
-        // Handle pointer axis (scroll)
-        // TODO: Implement pointer axis handling
+}
+
+fn keycode_to_name(key: u32) -> String {
+    match key {
+        64 => "super".to_string(),
+        36 => "return".to_string(),
+        24 => "q".to_string(),
+        38 => "a".to_string(),
+        39 => "s".to_string(),
+        40 => "d".to_string(),
+        37 => "w".to_string(),
+        _ => format!("key{}", key),
     }
 }
