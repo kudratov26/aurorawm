@@ -41,30 +41,40 @@ impl InputManager {
         }
     }
 
-    fn check_keybindings(&self, state: &AuroraState) {
+    fn check_keybindings(&self, state: &mut AuroraState) {
         let pressed: HashSet<String> = self
             .pressed_keys
             .iter()
             .map(|k| keycode_to_name(*k))
             .collect();
 
-        for binding in &state.config.keybindings.bindings {
-            let required: HashSet<String> = binding
-                .keys
-                .iter()
-                .map(|k| k.to_lowercase())
-                .collect();
+        let commands: Vec<String> = state
+            .config
+            .keybindings
+            .bindings
+            .iter()
+            .filter(|binding| {
+                let required: HashSet<String> = binding
+                    .keys
+                    .iter()
+                    .map(|k| k.to_lowercase())
+                    .collect();
+                required.iter().all(|k| pressed.contains(k))
+            })
+            .map(|b| b.command.clone())
+            .collect();
 
-            if required.iter().all(|k| pressed.contains(k)) {
-                execute_command(&binding.command);
-            }
+        for cmd in commands {
+            execute_command(&cmd, state);
         }
     }
 }
 
-fn execute_command(command: &str) {
+fn execute_command(command: &str, state: &mut AuroraState) {
     match command {
-        "close" => {}
+        "close" => {
+            state.close_focused();
+        }
         _ => {
             let _ = Command::new("sh").arg("-c").arg(command).spawn();
         }

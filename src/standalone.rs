@@ -264,10 +264,13 @@ pub fn run_standalone(config: Config) -> Result<(), Box<dyn std::error::Error>> 
                             }
                         }
                         libinput_rs::event::PointerEvent::Button(_btn_event) => {
-                            let windows: Vec<smithay::desktop::Window> =
-                                state.space.elements().cloned().collect();
-                            if let Some(window) = windows.last() {
-                                state.space.raise_element(window, true);
+                            let clicked = state
+                                .space
+                                .element_under(state.last_cursor_pos)
+                                .map(|(w, _)| w.clone());
+
+                            if let Some(window) = clicked {
+                                state.space.raise_element(&window, true);
                                 if let Some(toplevel) = window.toplevel() {
                                     let surface = toplevel.wl_surface().clone();
                                     if let Some(keyboard) = state.seat.get_keyboard() {
@@ -279,7 +282,6 @@ pub fn run_standalone(config: Config) -> Result<(), Box<dyn std::error::Error>> 
                                     }
                                 }
                             }
-                            state.arrange_windows();
                         }
                         _ => {}
                     },
@@ -294,7 +296,13 @@ pub fn run_standalone(config: Config) -> Result<(), Box<dyn std::error::Error>> 
             continue;
         }
 
-        state.space.refresh();
+        {
+            let prev_count = state.space.elements().len();
+            state.space.refresh();
+            if state.space.elements().len() != prev_count {
+                state.arrange_windows();
+            }
+        }
 
         let size = Size::from((output_mode.size.w, output_mode.size.h));
         let damage = Rectangle::from_size(size);

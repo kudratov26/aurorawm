@@ -183,9 +183,13 @@ pub fn run_winit(config: Config) -> Result<(), Box<dyn std::error::Error>> {
                     state.last_cursor_pos = pos;
                 }
                 InputEvent::PointerButton { event: _event } => {
-                    let windows: Vec<_> = state.space.elements().cloned().collect();
-                    if let Some(window) = windows.last() {
-                        state.space.raise_element(window, true);
+                    let clicked = state
+                        .space
+                        .element_under(state.last_cursor_pos)
+                        .map(|(w, _)| w.clone());
+
+                    if let Some(window) = clicked {
+                        state.space.raise_element(&window, true);
                         if let Some(toplevel) = window.toplevel() {
                             let surface = toplevel.wl_surface().clone();
                             if let Some(keyboard) = state.seat.get_keyboard() {
@@ -211,7 +215,13 @@ pub fn run_winit(config: Config) -> Result<(), Box<dyn std::error::Error>> {
             _ => {}
         });
 
-        state.space.refresh();
+        {
+            let prev_count = state.space.elements().len();
+            state.space.refresh();
+            if state.space.elements().len() != prev_count {
+                state.arrange_windows();
+            }
+        }
 
         let size = backend.window_size();
         let damage = Rectangle::from_size(size);

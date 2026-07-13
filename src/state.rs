@@ -179,11 +179,10 @@ impl AuroraState {
     pub fn close_focused(&mut self) {
         let windows: Vec<Window> = self.space.elements().cloned().collect();
         if let Some(active) = windows.last() {
-            if active.toplevel().is_some() {
-                self.space.unmap_elem(active);
+            if let Some(toplevel) = active.toplevel() {
+                toplevel.send_close();
             }
         }
-        self.arrange_windows();
     }
 }
 
