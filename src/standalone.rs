@@ -16,6 +16,7 @@ use smithay::backend::renderer::utils::draw_render_elements;
 use smithay::backend::renderer::{Bind, Color32F, Frame, Renderer};
 use smithay::backend::session::libseat::LibSeatSession;
 use smithay::backend::session::{Event as SessionEvent, Session};
+
 use smithay::input::keyboard::FilterResult;
 use smithay::output::{Output, PhysicalProperties, Scale, Subpixel};
 use smithay::reexports::calloop;
@@ -23,7 +24,7 @@ use smithay::reexports::drm::control::{connector, crtc, Device as ControlDevice,
 use smithay::reexports::input as libinput_rs;
 use smithay::reexports::input::event::keyboard::KeyboardEventTrait;
 use smithay::reexports::rustix::fs::OFlags;
-use smithay::utils::{Rectangle, Size, Transform};
+use smithay::utils::{Point, Rectangle, Size, Transform};
 use smithay::wayland::compositor::{with_surface_tree_downward, SurfaceAttributes, TraversalAction};
 use smithay::wayland::compositor::CompositorState;
 use tracing::{info, trace, warn};
@@ -76,7 +77,6 @@ fn find_first_connector(
 pub fn run_standalone(config: Config) -> Result<(), Box<dyn std::error::Error>> {
     info!("Starting AuroraWM standalone (DRM/KMS)");
 
-    // --- Wayland state ---
     let mut compositor = AuroraCompositor::new()?;
     let dh = compositor.display.handle();
 
@@ -86,12 +86,10 @@ pub fn run_standalone(config: Config) -> Result<(), Box<dyn std::error::Error>> 
     let seat = seat_state.new_wl_seat(&dh, "seat-0");
     let layout = crate::layout::LayoutEngine::new(&config);
 
-    // --- Session ---
     let (mut session, session_notifier) = LibSeatSession::new()?;
     let seat_name = session.seat();
     info!("Session: seat={}", seat_name);
 
-    // --- GPU ---
     let gpu_path = smithay::backend::udev::primary_gpu(&seat_name)?
         .ok_or("No primary GPU found")?;
     info!("GPU: {:?}", gpu_path);
@@ -107,7 +105,6 @@ pub fn run_standalone(config: Config) -> Result<(), Box<dyn std::error::Error>> 
 
     let drm_surface = drm_device.create_surface(crtc_handle, drm_mode, &[conn_handle])?;
 
-    // Separate GBM device for the allocator (consumed by GbmBufferedSurface)
     let gbm_fd = session.open(&gpu_path, OFlags::RDWR | OFlags::CLOEXEC)?;
     let gbm_dev = GbmDevice::new(gbm_fd)?;
 
@@ -131,13 +128,11 @@ pub fn run_standalone(config: Config) -> Result<(), Box<dyn std::error::Error>> 
     .map_err(|e| format!("GBM surface: {:?}", e))?;
     let gbm_surface = Rc::new(RefCell::new(gbm_surface));
 
-    // EGL/GLES (separate GBM device)
     let egl_gbm = GbmDevice::new(session.open(&gpu_path, OFlags::RDWR | OFlags::CLOEXEC)?)?;
     let egl_display = unsafe { EGLDisplay::new(egl_gbm)? };
     let egl_context = EGLContext::new(&egl_display)?;
     let renderer = RefCell::new(unsafe { GlesRenderer::new(egl_context)? });
 
-    // --- Output global ---
     let output = Output::new(
         "aurorawm-0".into(),
         PhysicalProperties {
@@ -155,19 +150,28 @@ pub fn run_standalone(config: Config) -> Result<(), Box<dyn std::error::Error>> 
         Some((0, 0).into()),
     );
 
-    // --- Aurora state ---
     let mut state = AuroraState {
         config,
         compositor_state,
         xdg_shell_state: smithay::wayland::shell::xdg::XdgShellState::new::<AuroraState>(&dh),
         shm_state,
         seat_state,
-        data_device_state: smithay::wayland::selection::data_device::DataDeviceState::new::<AuroraState>(&dh),
+        data_device_state: smithay::wayland::selection::data_device::DataDeviceState::new::<
+            AuroraState,
+        >(&dh),
         seat,
+        space: smithay::desktop::Space::default(),
+        popups: smithay::desktop::PopupManager::default(),
         layout,
         output: output.clone(),
         running: true,
+        start_time: Instant::now(),
+        last_cursor_pos: Point::from((0.0f64, 0.0f64)),
+        pending_move: None,
+        pending_resize: None,
     };
+
+    state.space.map_output(&state.output, (0, 0));
 
     let keyboard = state.seat.add_keyboard(Default::default(), 200, 200)?;
     let mut input_manager = InputManager::new();
@@ -180,7 +184,6 @@ pub fn run_standalone(config: Config) -> Result<(), Box<dyn std::error::Error>> 
 
     let start_time = Instant::now();
 
-    // --- Libinput ---
     let input_session = session.clone();
     let interface = LibinputSessionInterface::from(input_session);
     let mut lib_ctx = libinput_rs::Libinput::new_with_udev(interface);
@@ -189,13 +192,11 @@ pub fn run_standalone(config: Config) -> Result<(), Box<dyn std::error::Error>> 
         .map_err(|e| format!("libinput seat: {:?}", e))?;
     drop(session);
 
-    // --- Calloop event loop for session/DRM events ---
     let mut event_loop: calloop::EventLoop<'_, ()> = calloop::EventLoop::try_new()?;
     let loop_handle = event_loop.handle();
 
     let session_active = Rc::new(std::cell::Cell::new(true));
 
-    // Session notifier
     {
         let active = session_active.clone();
         loop_handle.insert_source(session_notifier, move |event, _, _| match event {
@@ -210,7 +211,6 @@ pub fn run_standalone(config: Config) -> Result<(), Box<dyn std::error::Error>> 
         })?;
     }
 
-    // DRM notifier (page flip completion)
     {
         let gs = gbm_surface.clone();
         loop_handle.insert_source(drm_notifier, move |event: DrmEvent, _, _| {
@@ -220,44 +220,82 @@ pub fn run_standalone(config: Config) -> Result<(), Box<dyn std::error::Error>> 
         })?;
     }
 
-    // --- Main rendering loop ---
     info!("Entering main loop");
     let mut running = true;
     while running {
-        // Process DRM & session events
         let _ = event_loop.dispatch(Duration::ZERO, &mut ());
 
-        // Poll libinput for input events
         if lib_ctx.dispatch().is_ok() {
             for event in &mut lib_ctx {
-                if let libinput_rs::Event::Keyboard(kb_event) = event {
-                    let keycode: smithay::backend::input::Keycode =
-                        (kb_event.key() + 8).into();
-                    let keystate = match kb_event.key_state() {
-                        libinput_rs::event::keyboard::KeyState::Pressed => KeyState::Pressed,
-                        libinput_rs::event::keyboard::KeyState::Released => KeyState::Released,
-                    };
-                    input_manager.handle_keyboard_event(&mut state, keycode, keystate);
-                    keyboard.input::<(), _>(
-                        &mut state,
-                        keycode,
-                        keystate,
-                        0.into(),
-                        0,
-                        |_, _, _| FilterResult::Forward,
-                    );
+                match event {
+                    libinput_rs::Event::Keyboard(kb_event) => {
+                        let keycode: smithay::backend::input::Keycode =
+                            (kb_event.key() + 8).into();
+                        let keystate = match kb_event.key_state() {
+                            libinput_rs::event::keyboard::KeyState::Pressed => {
+                                KeyState::Pressed
+                            }
+                            libinput_rs::event::keyboard::KeyState::Released => {
+                                KeyState::Released
+                            }
+                        };
+                        input_manager.handle_keyboard_event(&mut state, keycode, keystate);
+                        keyboard.input::<(), _>(
+                            &mut state,
+                            keycode,
+                            keystate,
+                            0.into(),
+                            0,
+                            |_, _, _| FilterResult::Forward,
+                        );
+                    }
+                    libinput_rs::Event::Pointer(ptr_event) => match ptr_event {
+                        libinput_rs::event::PointerEvent::Motion(abs_event) => {
+                            let dx = abs_event.dx();
+                            let dy = abs_event.dy();
+                            state.last_cursor_pos = Point::from((
+                                state.last_cursor_pos.x + dx,
+                                state.last_cursor_pos.y + dy,
+                            ));
+
+                            if let Some((_window, _location)) =
+                                state.space.element_under(state.last_cursor_pos)
+                            {
+                            }
+                        }
+                        libinput_rs::event::PointerEvent::Button(_btn_event) => {
+                            let windows: Vec<smithay::desktop::Window> =
+                                state.space.elements().cloned().collect();
+                            if let Some(window) = windows.last() {
+                                state.space.raise_element(window, true);
+                                if let Some(toplevel) = window.toplevel() {
+                                    let surface = toplevel.wl_surface().clone();
+                                    if let Some(keyboard) = state.seat.get_keyboard() {
+                                        keyboard.set_focus(
+                                            &mut state,
+                                            Some(surface),
+                                            0.into(),
+                                        );
+                                    }
+                                }
+                            }
+                            state.arrange_windows();
+                        }
+                        _ => {}
+                    },
+                    _ => {}
                 }
             }
         }
 
-        // If session is paused, just sleep and dispatch Wayland
         if !session_active.get() {
             std::thread::sleep(Duration::from_millis(10));
             let _ = compositor.dispatch_and_flush(&mut state);
             continue;
         }
 
-        // --- Render frame ---
+        state.space.refresh();
+
         let size = Size::from((output_mode.size.w, output_mode.size.h));
         let damage = Rectangle::from_size(size);
         let full_damage = vec![damage];
@@ -273,19 +311,32 @@ pub fn run_standalone(config: Config) -> Result<(), Box<dyn std::error::Error>> 
             }
         };
 
-        // Collect render elements first
+        let output = &state.output.clone();
+        let output_geo = state
+            .space
+            .output_geometry(output)
+            .unwrap_or_else(|| Rectangle::from_size(output_mode.size.to_logical(1)));
+
         let elements: Vec<WaylandSurfaceRenderElement<GlesRenderer>> = {
             let mut r = renderer.borrow_mut();
             state
-                .xdg_shell_state
-                .toplevel_surfaces()
-                .iter()
-                .flat_map(|surface| {
+                .space
+                .elements()
+                .flat_map(|window| {
+                    let location = state
+                        .space
+                        .element_location(window)
+                        .unwrap_or((0, 0).into());
+                    let loc = (location - output_geo.loc).to_physical_precise_round(
+                        output.current_scale().fractional_scale(),
+                    );
+                    let scale =
+                        smithay::utils::Scale::from(output.current_scale().fractional_scale());
                     render_elements_from_surface_tree(
                         &mut *r,
-                        surface.wl_surface(),
-                        (0, 0),
-                        1.0,
+                        window.toplevel().unwrap().wl_surface(),
+                        loc,
+                        scale,
                         1.0,
                         smithay::backend::renderer::element::Kind::Unspecified,
                     )
@@ -293,7 +344,6 @@ pub fn run_standalone(config: Config) -> Result<(), Box<dyn std::error::Error>> 
                 .collect()
         };
 
-        // Render into the dmabuf
         let mut r = renderer.borrow_mut();
         let mut target = match r.bind(&mut dmabuf) {
             Ok(t) => t,
@@ -322,19 +372,19 @@ pub fn run_standalone(config: Config) -> Result<(), Box<dyn std::error::Error>> 
         drop(r);
         drop(dmabuf);
 
-        if let Err(e) = gbm_surface.borrow_mut().queue_buffer(None, Some(full_damage), ()) {
+        if let Err(e) = gbm_surface
+            .borrow_mut()
+            .queue_buffer(None, Some(full_damage), ())
+        {
             warn!("queue_buffer: {:?}", e);
         }
 
-        // Send frame callbacks
-        for surface in state.xdg_shell_state.toplevel_surfaces() {
-            send_frames_surface_tree(
-                surface.wl_surface(),
-                start_time.elapsed().as_millis() as u32,
-            );
+        for window in state.space.elements() {
+            if let Some(surface) = window.toplevel().map(|t| t.wl_surface()) {
+                send_frames_surface_tree(surface, start_time.elapsed().as_millis() as u32);
+            }
         }
 
-        // Wayland client handling
         let _ = compositor.accept_clients();
         let _ = compositor.dispatch_and_flush(&mut state);
 

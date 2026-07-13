@@ -42,12 +42,16 @@ impl InputManager {
     }
 
     fn check_keybindings(&self, state: &AuroraState) {
-        let pressed: HashSet<String> = self.pressed_keys.iter()
+        let pressed: HashSet<String> = self
+            .pressed_keys
+            .iter()
             .map(|k| keycode_to_name(*k))
             .collect();
 
         for binding in &state.config.keybindings.bindings {
-            let required: HashSet<String> = binding.keys.iter()
+            let required: HashSet<String> = binding
+                .keys
+                .iter()
                 .map(|k| k.to_lowercase())
                 .collect();
 
@@ -62,10 +66,7 @@ fn execute_command(command: &str) {
     match command {
         "close" => {}
         _ => {
-            let _ = Command::new("sh")
-                .arg("-c")
-                .arg(command)
-                .spawn();
+            let _ = Command::new("sh").arg("-c").arg(command).spawn();
         }
     }
 }
