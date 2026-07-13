@@ -4,6 +4,9 @@ use std::time::{Duration, Instant};
 
 use smithay::backend::allocator::gbm::{GbmAllocator, GbmBufferFlags, GbmDevice};
 use smithay::backend::allocator::{Format, Fourcc};
+use smithay::backend::renderer::element::texture::{TextureBuffer, TextureRenderElement};
+use smithay::backend::renderer::element::Kind;
+use smithay::backend::renderer::ImportMem;
 use smithay::backend::drm::{DrmDevice, DrmDeviceFd, DrmEvent, GbmBufferedSurface};
 use smithay::backend::egl::{EGLContext, EGLDisplay};
 use smithay::backend::input::KeyState;
@@ -17,6 +20,7 @@ use smithay::backend::renderer::{Bind, Color32F, Frame, Renderer};
 use smithay::backend::session::libseat::LibSeatSession;
 use smithay::backend::session::{Event as SessionEvent, Session};
 
+use smithay::desktop::layer_map_for_output;
 use smithay::input::keyboard::FilterResult;
 use smithay::output::{Output, PhysicalProperties, Scale, Subpixel};
 use smithay::reexports::calloop;
@@ -27,6 +31,7 @@ use smithay::reexports::rustix::fs::OFlags;
 use smithay::utils::{Point, Rectangle, Size, Transform};
 use smithay::wayland::compositor::{with_surface_tree_downward, SurfaceAttributes, TraversalAction};
 use smithay::wayland::compositor::CompositorState;
+use smithay::wayland::shell::wlr_layer::Layer as WlrLayer;
 use tracing::{info, trace, warn};
 
 use crate::compositor::AuroraCompositor;
@@ -85,6 +90,9 @@ pub fn run_standalone(config: Config) -> Result<(), Box<dyn std::error::Error>> 
     let mut seat_state = smithay::input::SeatState::new();
     let seat = seat_state.new_wl_seat(&dh, "seat-0");
     let layout = crate::layout::LayoutEngine::new(&config);
+
+    let layer_shell_state =
+        smithay::wayland::shell::wlr_layer::WlrLayerShellState::new::<AuroraState>(&dh);
 
     let (mut session, session_notifier) = LibSeatSession::new()?;
     let seat_name = session.seat();
@@ -150,6 +158,10 @@ pub fn run_standalone(config: Config) -> Result<(), Box<dyn std::error::Error>> 
         Some((0, 0).into()),
     );
 
+    let wallpaper = crate::render::load_wallpaper(
+        config.appearance.wallpaper.as_deref(),
+    );
+
     let mut state = AuroraState {
         config,
         compositor_state,
@@ -160,19 +172,24 @@ pub fn run_standalone(config: Config) -> Result<(), Box<dyn std::error::Error>> 
             AuroraState,
         >(&dh),
         seat,
-        space: smithay::desktop::Space::default(),
+        workspaces: vec![smithay::desktop::Space::default()],
+        current_workspace: 0,
         popups: smithay::desktop::PopupManager::default(),
         layout,
         output: output.clone(),
+        layer_shell_state,
         running: true,
         start_time: Instant::now(),
         last_cursor_pos: Point::from((0.0f64, 0.0f64)),
         mouse_mode: crate::state::MouseMode::None,
         drag_window: None,
         drag_offset: (0, 0).into(),
+        wallpaper,
     };
 
-    state.space.map_output(&state.output, (0, 0));
+    for ws in &mut state.workspaces {
+        ws.map_output(&state.output, (0, 0));
+    }
 
     let keyboard = state.seat.add_keyboard(Default::default(), 200, 200)?;
     let mut input_manager = InputManager::new();
@@ -263,7 +280,7 @@ pub fn run_standalone(config: Config) -> Result<(), Box<dyn std::error::Error>> 
                                 if let Some(window) = state.drag_window.clone() {
                                     let new_pos = state.last_cursor_pos.to_i32_round()
                                         - state.drag_offset;
-                                    state.space.map_element(window, new_pos, false);
+                                    state.space_mut().map_element(window, new_pos, false);
                                 }
                             }
                         }
@@ -288,7 +305,7 @@ pub fn run_standalone(config: Config) -> Result<(), Box<dyn std::error::Error>> 
                                 if let Some(window) = state.drag_window.clone() {
                                     let new_pos = state.last_cursor_pos.to_i32_round()
                                         - state.drag_offset;
-                                    state.space.map_element(window, new_pos, false);
+                                    state.space_mut().map_element(window, new_pos, false);
                                 }
                             }
                         }
@@ -300,12 +317,12 @@ pub fn run_standalone(config: Config) -> Result<(), Box<dyn std::error::Error>> 
 
                             if is_pressed {
                                 let clicked = state
-                                    .space
+                                    .space()
                                     .element_under(state.last_cursor_pos)
                                     .map(|(w, _)| w.clone());
 
                                 if let Some(window) = clicked {
-                                    state.space.raise_element(&window, true);
+                                    state.space_mut().raise_element(&window, true);
                                     if let Some(toplevel) = window.toplevel() {
                                         let surface = toplevel.wl_surface().clone();
                                         if let Some(keyboard) = state.seat.get_keyboard() {
@@ -321,7 +338,7 @@ pub fn run_standalone(config: Config) -> Result<(), Box<dyn std::error::Error>> 
                                         let cursor_geo =
                                             state.last_cursor_pos.to_i32_round();
                                         let win_loc = state
-                                            .space
+                                            .space()
                                             .element_location(&window)
                                             .unwrap_or((0, 0).into());
                                         state.mouse_mode =
@@ -353,12 +370,10 @@ pub fn run_standalone(config: Config) -> Result<(), Box<dyn std::error::Error>> 
             continue;
         }
 
-        {
-            let prev_count = state.space.elements().len();
-            state.space.refresh();
-            if state.space.elements().len() != prev_count {
-                state.arrange_windows();
-            }
+        let prev_count = state.space().elements().len();
+        state.space_mut().refresh();
+        if state.space().elements().len() != prev_count {
+            state.arrange_windows();
         }
 
         let size = Size::from((output_mode.size.w, output_mode.size.h));
@@ -376,38 +391,113 @@ pub fn run_standalone(config: Config) -> Result<(), Box<dyn std::error::Error>> 
             }
         };
 
-        let output = &state.output.clone();
+        let output = state.output.clone();
         let output_geo = state
-            .space
-            .output_geometry(output)
+            .space()
+            .output_geometry(&output)
             .unwrap_or_else(|| Rectangle::from_size(output_mode.size.to_logical(1)));
+
+        let output_size = smithay::utils::Size::<i32, smithay::utils::Logical>::from((
+            output_mode.size.w,
+            output_mode.size.h,
+        ));
+
+        let mut layer_map = layer_map_for_output(&output);
+        layer_map.arrange();
+        layer_map.cleanup();
+        let scale_f64 = output.current_scale().fractional_scale();
+        let scale = smithay::utils::Scale::from(scale_f64);
+
+        let collect_layer = |layer: WlrLayer,
+                             renderer: &std::cell::RefCell<GlesRenderer>,
+                             layer_map: &smithay::desktop::LayerMap|
+         -> Vec<WaylandSurfaceRenderElement<GlesRenderer>> {
+            let mut r = renderer.borrow_mut();
+            layer_map
+                .layers_on(layer)
+                .filter_map(|ls| {
+                    let geo = layer_map.layer_geometry(ls)?;
+                    let loc = (geo.loc - output_geo.loc)
+                        .to_physical_precise_round(scale_f64);
+                    Some(render_elements_from_surface_tree(
+                        &mut *r,
+                        ls.wl_surface(),
+                        loc,
+                        scale,
+                        1.0,
+                        Kind::Unspecified,
+                    ))
+                })
+                .flatten()
+                .collect()
+        };
+
+        let mut pre_layer_elems: Vec<WaylandSurfaceRenderElement<GlesRenderer>> =
+            collect_layer(WlrLayer::Background, &renderer, &layer_map);
+        pre_layer_elems.extend(collect_layer(
+            WlrLayer::Bottom,
+            &renderer,
+            &layer_map,
+        ));
+
+        let wallpaper_elem = state.wallpaper.as_ref().and_then(|wp| {
+            let mut r = renderer.borrow_mut();
+            TextureBuffer::from_memory(
+                &mut *r,
+                &wp.rgba,
+                Fourcc::Argb8888,
+                (wp.width as i32, wp.height as i32),
+                false,
+                1,
+                Transform::Normal,
+                None,
+            )
+            .ok()
+            .map(|tex_buf| {
+                TextureRenderElement::from_texture_buffer(
+                    (0.0, 0.0),
+                    &tex_buf,
+                    Some(1.0),
+                    None,
+                    Some(output_size),
+                    Kind::Unspecified,
+                )
+            })
+        });
 
         let elements: Vec<WaylandSurfaceRenderElement<GlesRenderer>> = {
             let mut r = renderer.borrow_mut();
-            state
-                .space
+            let space = state.space();
+            space
                 .elements()
                 .flat_map(|window| {
-                    let location = state
-                        .space
+                    let location = space
                         .element_location(window)
                         .unwrap_or((0, 0).into());
                     let loc = (location - output_geo.loc).to_physical_precise_round(
-                        output.current_scale().fractional_scale(),
+                        scale_f64,
                     );
-                    let scale =
-                        smithay::utils::Scale::from(output.current_scale().fractional_scale());
                     render_elements_from_surface_tree(
                         &mut *r,
                         window.toplevel().unwrap().wl_surface(),
                         loc,
                         scale,
                         1.0,
-                        smithay::backend::renderer::element::Kind::Unspecified,
+                        Kind::Unspecified,
                     )
                 })
                 .collect()
         };
+
+        let mut post_layer_elems: Vec<WaylandSurfaceRenderElement<GlesRenderer>> =
+            collect_layer(WlrLayer::Top, &renderer, &layer_map);
+        post_layer_elems.extend(collect_layer(
+            WlrLayer::Overlay,
+            &renderer,
+            &layer_map,
+        ));
+
+        drop(layer_map);
 
         let mut r = renderer.borrow_mut();
         let mut target = match r.bind(&mut dmabuf) {
@@ -427,7 +517,26 @@ pub fn run_standalone(config: Config) -> Result<(), Box<dyn std::error::Error>> 
         };
 
         let _ = frame.clear(Color32F::new(0.1, 0.1, 0.15, 1.0), &full_damage);
-        let _ = draw_render_elements(&mut frame, 1.0, &elements, &full_damage);
+
+        let _ = draw_render_elements(&mut frame, 1.0, &pre_layer_elems, &full_damage);
+
+        if let Some(tex_elem) = wallpaper_elem {
+            let _ = draw_render_elements::<GlesRenderer, _, TextureRenderElement<smithay::backend::renderer::gles::GlesTexture>>(
+                &mut frame,
+                1.0,
+                &[tex_elem],
+                &full_damage,
+            );
+        }
+
+        let _ = draw_render_elements::<GlesRenderer, _, WaylandSurfaceRenderElement<GlesRenderer>>(
+            &mut frame,
+            1.0,
+            &elements,
+            &full_damage,
+        );
+
+        let _ = draw_render_elements(&mut frame, 1.0, &post_layer_elems, &full_damage);
 
         if let Err(e) = frame.finish() {
             warn!("finish: {:?}", e);
@@ -444,7 +553,7 @@ pub fn run_standalone(config: Config) -> Result<(), Box<dyn std::error::Error>> 
             warn!("queue_buffer: {:?}", e);
         }
 
-        for window in state.space.elements() {
+        for window in state.space().elements() {
             if let Some(surface) = window.toplevel().map(|t| t.wl_surface()) {
                 send_frames_surface_tree(surface, start_time.elapsed().as_millis() as u32);
             }

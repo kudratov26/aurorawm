@@ -75,6 +75,11 @@ fn execute_command(command: &str, state: &mut AuroraState) {
         "close" => {
             state.close_focused();
         }
+        _ if command.starts_with("workspace ") => {
+            if let Ok(n) = command[10..].trim().parse::<usize>() {
+                state.switch_workspace(n.saturating_sub(1));
+            }
+        }
         _ => {
             let _ = Command::new("sh").arg("-c").arg(command).spawn();
         }
@@ -83,6 +88,16 @@ fn execute_command(command: &str, state: &mut AuroraState) {
 
 fn keycode_to_name(key: u32) -> String {
     match key {
+        10 => "1".to_string(),
+        11 => "2".to_string(),
+        12 => "3".to_string(),
+        13 => "4".to_string(),
+        14 => "5".to_string(),
+        15 => "6".to_string(),
+        16 => "7".to_string(),
+        17 => "8".to_string(),
+        18 => "9".to_string(),
+        19 => "0".to_string(),
         64 => "super".to_string(),
         36 => "return".to_string(),
         24 => "q".to_string(),

@@ -101,6 +101,7 @@ pub struct AppearanceConfig {
     pub blur: BlurConfig,
     pub shadows: ShadowConfig,
     pub animations: AnimationConfig,
+    pub wallpaper: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -228,6 +229,7 @@ impl Default for Config {
                     duration_ms: 200,
                     easing: "ease-out-cubic".to_string(),
                 },
+                wallpaper: None,
             },
             keybindings: KeybindingsConfig {
                 modifier: "SUPER".to_string(),

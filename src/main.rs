@@ -3,6 +3,7 @@ mod config;
 mod input;
 mod layout;
 mod output;
+mod render;
 mod shell;
 mod state;
 mod standalone;
@@ -11,25 +12,31 @@ use std::time::Instant;
 
 use smithay::{
     backend::{
+        allocator::Fourcc,
         input::{
             AbsolutePositionEvent, ButtonState, InputEvent, KeyboardKeyEvent, PointerButtonEvent,
         },
         renderer::{
             element::{
                 surface::{render_elements_from_surface_tree, WaylandSurfaceRenderElement},
+                texture::{TextureBuffer, TextureRenderElement},
                 Kind,
             },
             gles::GlesRenderer,
             utils::draw_render_elements,
-            Color32F, Frame, Renderer,
+            Color32F, Frame, ImportMem, Renderer,
         },
         winit::{self, WinitEvent},
     },
+    desktop::layer_map_for_output,
     input::keyboard::FilterResult,
     output::{Mode, Output, PhysicalProperties, Scale, Subpixel},
     reexports::wayland_server::protocol::wl_surface,
     utils::{Point, Rectangle, Transform},
-    wayland::compositor::{with_surface_tree_downward, SurfaceAttributes, TraversalAction},
+    wayland::{
+        compositor::{with_surface_tree_downward, SurfaceAttributes, TraversalAction},
+        shell::wlr_layer::Layer as WlrLayer,
+    },
 };
 
 use crate::compositor::AuroraCompositor;
@@ -95,6 +102,9 @@ pub fn run_winit(config: Config) -> Result<(), Box<dyn std::error::Error>> {
 
     let layout = LayoutEngine::new(&config);
 
+    let layer_shell_state =
+        smithay::wayland::shell::wlr_layer::WlrLayerShellState::new::<AuroraState>(&dh);
+
     let output = Output::new(
         "aurorawm-0".into(),
         PhysicalProperties {
@@ -127,9 +137,11 @@ pub fn run_winit(config: Config) -> Result<(), Box<dyn std::error::Error>> {
             AuroraState,
         >(&dh),
         seat,
-        space: smithay::desktop::Space::default(),
+        workspaces: vec![smithay::desktop::Space::default()],
+        current_workspace: 0,
         popups: smithay::desktop::PopupManager::default(),
         layout,
+        layer_shell_state,
         output,
         running: true,
         start_time: Instant::now(),
@@ -137,9 +149,16 @@ pub fn run_winit(config: Config) -> Result<(), Box<dyn std::error::Error>> {
         mouse_mode: crate::state::MouseMode::None,
         drag_window: None,
         drag_offset: (0, 0).into(),
+        wallpaper: None,
     };
 
-    state.space.map_output(&state.output, (0, 0));
+    state.wallpaper = crate::render::load_wallpaper(
+        state.config.appearance.wallpaper.as_deref(),
+    );
+
+    for ws in &mut state.workspaces {
+        ws.map_output(&state.output, (0, 0));
+    }
 
     let (mut backend, mut winit_event_loop) = winit::init::<GlesRenderer>()?;
 
@@ -187,7 +206,7 @@ pub fn run_winit(config: Config) -> Result<(), Box<dyn std::error::Error>> {
                         if let Some(window) = state.drag_window.clone() {
                             let new_pos = state.last_cursor_pos.to_i32_round()
                                 - state.drag_offset;
-                            state.space.map_element(window, new_pos, false);
+                            state.space_mut().map_element(window, new_pos, false);
                         }
                     }
                 }
@@ -198,12 +217,12 @@ pub fn run_winit(config: Config) -> Result<(), Box<dyn std::error::Error>> {
                         let is_super_held = input_manager.pressed_keys.contains(&64);
 
                         let clicked = state
-                            .space
+                            .space()
                             .element_under(state.last_cursor_pos)
                             .map(|(w, _)| w.clone());
 
                         if let Some(window) = clicked {
-                            state.space.raise_element(&window, true);
+                            state.space_mut().raise_element(&window, true);
                             if let Some(toplevel) = window.toplevel() {
                                 let surface = toplevel.wl_surface().clone();
                                 if let Some(keyboard) = state.seat.get_keyboard() {
@@ -214,7 +233,7 @@ pub fn run_winit(config: Config) -> Result<(), Box<dyn std::error::Error>> {
                             if is_super_held {
                                 let cursor_geo = state.last_cursor_pos.to_i32_round();
                                 let win_loc = state
-                                    .space
+                                    .space()
                                     .element_location(&window)
                                     .unwrap_or((0, 0).into());
                                 state.mouse_mode = crate::state::MouseMode::Moving;
@@ -246,12 +265,10 @@ pub fn run_winit(config: Config) -> Result<(), Box<dyn std::error::Error>> {
             _ => {}
         });
 
-        {
-            let prev_count = state.space.elements().len();
-            state.space.refresh();
-            if state.space.elements().len() != prev_count {
-                state.arrange_windows();
-            }
+        let prev_count = state.space().elements().len();
+        state.space_mut().refresh();
+        if state.space().elements().len() != prev_count {
+            state.arrange_windows();
         }
 
         let size = backend.window_size();
@@ -261,7 +278,7 @@ pub fn run_winit(config: Config) -> Result<(), Box<dyn std::error::Error>> {
             let (renderer, mut framebuffer) = backend.bind().unwrap();
 
             let output = &state.output;
-            let output_geo = state.space.output_geometry(output).unwrap_or_else(|| {
+            let output_geo = state.space().output_geometry(output).unwrap_or_else(|| {
                 Rectangle::from_size(
                     output
                         .current_mode()
@@ -270,41 +287,134 @@ pub fn run_winit(config: Config) -> Result<(), Box<dyn std::error::Error>> {
                 )
             });
 
-            let elements: Vec<WaylandSurfaceRenderElement<GlesRenderer>> = state
-                .space
-                .elements()
-                .flat_map(|window| {
-                    let location = state
-                        .space
-                        .element_location(window)
-                        .unwrap_or((0, 0).into());
-                    let loc = (location - output_geo.loc).to_physical_precise_round(
-                        output.current_scale().fractional_scale(),
-                    );
-                    let scale = smithay::utils::Scale::from(output.current_scale().fractional_scale());
-                    render_elements_from_surface_tree(
+            let output_size = smithay::utils::Size::<i32, smithay::utils::Logical>::from((
+                size.w,
+                size.h,
+            ));
+
+            let mut layer_map = layer_map_for_output(output);
+            layer_map.arrange();
+            layer_map.cleanup();
+            let scale_f64 = output.current_scale().fractional_scale();
+            let scale = smithay::utils::Scale::from(scale_f64);
+
+            let collect_layer_elems = |layer: WlrLayer,
+                                       renderer: &mut GlesRenderer,
+                                       layer_map: &mut smithay::desktop::LayerMap|
+             -> Vec<WaylandSurfaceRenderElement<GlesRenderer>> {
+                layer_map
+                    .layers_on(layer)
+                    .filter_map(|ls| {
+                        let geo = layer_map.layer_geometry(ls)?;
+                        let loc = (geo.loc - output_geo.loc)
+                            .to_physical_precise_round(scale_f64);
+                        Some(render_elements_from_surface_tree(
+                            renderer,
+                            ls.wl_surface(),
+                            loc,
+                            scale,
+                            1.0,
+                            Kind::Unspecified,
+                        ))
+                    })
+                    .flatten()
+                    .collect()
+            };
+
+            let mut pre_layer_elems: Vec<WaylandSurfaceRenderElement<GlesRenderer>> =
+                collect_layer_elems(WlrLayer::Background, renderer, &mut layer_map);
+            pre_layer_elems.extend(collect_layer_elems(
+                WlrLayer::Bottom,
+                renderer,
+                &mut layer_map,
+            ));
+
+            let wallpaper_elem = state
+                .wallpaper
+                .as_ref()
+                .and_then(|wp| {
+                    TextureBuffer::from_memory(
                         renderer,
-                        window.toplevel().unwrap().wl_surface(),
-                        loc,
-                        scale,
-                        1.0,
-                        Kind::Unspecified,
+                        &wp.rgba,
+                        Fourcc::Argb8888,
+                        (wp.width as i32, wp.height as i32),
+                        false,
+                        1,
+                        Transform::Normal,
+                        None,
                     )
-                })
-                .collect();
+                    .ok()
+                    .map(|tex_buf| {
+                        TextureRenderElement::from_texture_buffer(
+                            (0.0, 0.0),
+                            &tex_buf,
+                            Some(1.0),
+                            None,
+                            Some(output_size),
+                            Kind::Unspecified,
+                        )
+                    })
+                });
+
+            let elements: Vec<WaylandSurfaceRenderElement<GlesRenderer>> = {
+                let space = state.space();
+                space
+                    .elements()
+                    .flat_map(|window| {
+                        let location = space
+                            .element_location(window)
+                            .unwrap_or((0, 0).into());
+                        let loc = (location - output_geo.loc).to_physical_precise_round(scale_f64);
+                        render_elements_from_surface_tree(
+                            renderer,
+                            window.toplevel().unwrap().wl_surface(),
+                            loc,
+                            scale,
+                            1.0,
+                            Kind::Unspecified,
+                        )
+                    })
+                    .collect()
+            };
+
+            let mut post_layer_elems: Vec<WaylandSurfaceRenderElement<GlesRenderer>> =
+                collect_layer_elems(WlrLayer::Top, renderer, &mut layer_map);
+            post_layer_elems.extend(collect_layer_elems(
+                WlrLayer::Overlay,
+                renderer,
+                &mut layer_map,
+            ));
+
+            drop(layer_map);
 
             let mut frame = renderer
                 .render(&mut framebuffer, size, Transform::Flipped180)
                 .unwrap();
+
             frame
                 .clear(Color32F::new(0.1, 0.1, 0.15, 1.0), &[damage])
                 .unwrap();
+
+            draw_render_elements(&mut frame, 1.0, &pre_layer_elems, &[damage]).unwrap();
+
+            if let Some(tex_elem) = wallpaper_elem {
+                draw_render_elements::<GlesRenderer, _, TextureRenderElement<smithay::backend::renderer::gles::GlesTexture>>(
+                    &mut frame,
+                    1.0,
+                    &[tex_elem],
+                    &[damage],
+                )
+                .unwrap();
+            }
+
             draw_render_elements(&mut frame, 1.0, &elements, &[damage]).unwrap();
+            draw_render_elements(&mut frame, 1.0, &post_layer_elems, &[damage]).unwrap();
             let _ = frame.finish().unwrap();
 
-            for window in state.space.elements() {
+            let start_time = state.start_time;
+            for window in state.space().elements() {
                 if let Some(surface) = window.toplevel().map(|t| t.wl_surface()) {
-                    send_frames_surface_tree(surface, state.start_time.elapsed().as_millis() as u32);
+                    send_frames_surface_tree(surface, start_time.elapsed().as_millis() as u32);
                 }
             }
 
