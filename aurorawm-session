@@ -6,4 +6,4 @@ export GDK_BACKEND=wayland
 export SDL_VIDEODRIVER=wayland
 export CLUTTER_BACKEND=wayland
 export _JAVA_AWT_WM_NONREPARENTING=1
-exec aurorawm
+exec /usr/bin/aurorawm

@@ -13,6 +13,7 @@ release:
 install: release
 	@echo "Installing AuroraWM..."
 	install -Dm755 target/release/aurorawm $(DESTDIR)/usr/bin/aurorawm
+	install -Dm755 aurorawm-session $(DESTDIR)/usr/bin/aurorawm-session
 	install -Dm644 aurorawm.desktop $(DESTDIR)/usr/share/wayland-sessions/aurorawm.desktop
 	install -Dm644 aurorawm.service $(DESTDIR)/usr/lib/systemd/system/aurorawm.service
 	@echo "Installation complete!"

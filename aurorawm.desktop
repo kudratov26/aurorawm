@@ -1,5 +1,5 @@
 [Desktop Entry]
 Name=AuroraWM
 Comment=A minimalist Wayland compositor
-Exec=/usr/local/bin/aurorawm-session
+Exec=/usr/bin/aurorawm-session
 Type=Application

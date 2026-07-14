@@ -1,4 +1,4 @@
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use smithay::{
     delegate_compositor, delegate_data_device, delegate_layer_shell, delegate_output, delegate_seat,
@@ -42,6 +42,33 @@ pub enum MouseMode {
     Resizing,
 }
 
+pub(crate) struct AnimEntry {
+    window: Window,
+    old_pos: Point<i32, Logical>,
+    new_pos: Point<i32, Logical>,
+}
+
+fn ease_out_cubic(t: f64) -> f64 {
+    1.0 - (1.0 - t).powi(3)
+}
+
+fn ease_in_out_cubic(t: f64) -> f64 {
+    if t < 0.5 {
+        4.0 * t * t * t
+    } else {
+        1.0 - (-2.0 * t + 2.0).powi(3) / 2.0
+    }
+}
+
+fn apply_easing(t: f64, easing: &str) -> f64 {
+    match easing {
+        "linear" => t,
+        "ease-out-cubic" => ease_out_cubic(t),
+        "ease-in-out-cubic" => ease_in_out_cubic(t),
+        _ => ease_out_cubic(t),
+    }
+}
+
 pub struct AuroraState {
     pub config: Config,
     pub compositor_state: CompositorState,
@@ -63,6 +90,11 @@ pub struct AuroraState {
     pub drag_window: Option<Window>,
     pub drag_offset: Point<i32, Logical>,
     pub wallpaper: Option<WallpaperData>,
+    pub animating: bool,
+    pub anim_start: Instant,
+    pub anim_duration: Duration,
+    pub anim_easing: String,
+    pub(crate) anim_windows: Vec<AnimEntry>,
 }
 
 impl BufferHandler for AuroraState {
@@ -81,9 +113,14 @@ impl XdgShellHandler for AuroraState {
     fn new_toplevel(&mut self, surface: ToplevelSurface) {
         let window = Window::new_wayland_window(surface);
         self.space_mut().map_element(window.clone(), (0, 0), true);
+        self.space_mut().raise_element(&window, true);
+        if let Some(toplevel) = window.toplevel() {
+            let s = toplevel.wl_surface().clone();
+            if let Some(kb) = self.seat.get_keyboard() {
+                kb.set_focus(self, Some(s), 0.into());
+            }
+        }
         self.arrange_windows();
-
-        window.toplevel().unwrap().send_configure();
     }
 
     fn new_popup(&mut self, surface: PopupSurface, _positioner: PositionerState) {
@@ -243,13 +280,99 @@ impl AuroraState {
         let windows: Vec<Window> = self.space().elements().cloned().collect();
         let window_geos: Vec<_> = windows.iter().map(|w| w.geometry()).collect();
 
-        if !window_geos.is_empty() {
-            let positions = self.layout.arrange(&window_geos, output_area);
+        if window_geos.is_empty() {
+            return;
+        }
 
-            for (window, geo) in windows.iter().zip(positions.iter()) {
-                self.space_mut().map_element(window.clone(), geo.loc, false);
-                window.toplevel().unwrap().send_configure();
+        let old_positions: Vec<(Window, Point<i32, Logical>)> = windows
+            .iter()
+            .map(|w| {
+                (
+                    w.clone(),
+                    self.space().element_location(w).unwrap_or((0, 0).into()),
+                )
+            })
+            .collect();
+
+        let positions = self.layout.arrange(&window_geos, output_area);
+
+        let anim_dur = Duration::from_millis(
+            self.config.appearance.animations.duration_ms as u64,
+        );
+        let anim_enabled = self.config.appearance.animations.enabled;
+
+        for (window, geo) in windows.iter().zip(positions.iter()) {
+            self.space_mut().map_element(window.clone(), geo.loc, false);
+            if let Some(toplevel) = window.toplevel() {
+                toplevel.with_pending_state(|state| {
+                    state.size = Some(smithay::utils::Size::from((geo.size.w.max(1), geo.size.h.max(1))));
+                });
+                toplevel.send_configure();
             }
+        }
+
+        if anim_enabled {
+            let new_positions: Vec<(Window, Point<i32, Logical>)> = windows
+                .iter()
+                .map(|w| {
+                    (
+                        w.clone(),
+                        self.space().element_location(w).unwrap_or((0, 0).into()),
+                    )
+                })
+                .collect();
+
+            self.anim_windows = old_positions
+                .into_iter()
+                .zip(new_positions.into_iter())
+                .map(|((w, old), (_, new))| AnimEntry {
+                    window: w,
+                    old_pos: old,
+                    new_pos: new,
+                })
+                .filter(|e| e.old_pos != e.new_pos)
+                .collect();
+
+            if !self.anim_windows.is_empty() {
+                self.animating = true;
+                self.anim_start = Instant::now();
+                self.anim_duration = anim_dur;
+                self.anim_easing = self.config.appearance.animations.easing.clone();
+                let first = self.anim_windows[0].window.clone();
+                let first_pos = self.anim_windows[0].old_pos;
+                self.space_mut().map_element(first, first_pos, false);
+            }
+        }
+    }
+
+    pub fn update_animation(&mut self) {
+        if !self.animating {
+            return;
+        }
+
+        let elapsed = self.anim_start.elapsed();
+        let t = (elapsed.as_secs_f64() / self.anim_duration.as_secs_f64()).min(1.0);
+
+        if t >= 1.0 {
+            self.animating = false;
+            let entries: Vec<_> = self.anim_windows.drain(..).collect();
+            for entry in &entries {
+                self.space_mut()
+                    .map_element(entry.window.clone(), entry.new_pos, false);
+            }
+            return;
+        }
+
+        let eased = apply_easing(t, &self.anim_easing);
+
+        let entries: Vec<_> = self.anim_windows.iter().map(|e| {
+            let x = e.old_pos.x as f64 + (e.new_pos.x - e.old_pos.x) as f64 * eased;
+            let y = e.old_pos.y as f64 + (e.new_pos.y - e.old_pos.y) as f64 * eased;
+            (e.window.clone(), Point::from((x.round() as i32, y.round() as i32)))
+        }).collect();
+
+        for (window, pos) in &entries {
+            self.space_mut().map_element(window.clone(), *pos, false);
         }
     }
 

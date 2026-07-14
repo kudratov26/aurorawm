@@ -185,6 +185,11 @@ pub fn run_standalone(config: Config) -> Result<(), Box<dyn std::error::Error>> 
         drag_window: None,
         drag_offset: (0, 0).into(),
         wallpaper,
+        animating: false,
+        anim_start: Instant::now(),
+        anim_duration: Duration::from_millis(200),
+        anim_easing: String::new(),
+        anim_windows: Vec::new(),
     };
 
     for ws in &mut state.workspaces {
@@ -346,6 +351,8 @@ pub fn run_standalone(config: Config) -> Result<(), Box<dyn std::error::Error>> 
                                         state.drag_window = Some(window);
                                         state.drag_offset = cursor_geo - win_loc;
                                     }
+                                } else if let Some(keyboard) = state.seat.get_keyboard() {
+                                    keyboard.set_focus(&mut state, None, 0.into());
                                 }
                             } else {
                                 if state.mouse_mode
@@ -375,6 +382,8 @@ pub fn run_standalone(config: Config) -> Result<(), Box<dyn std::error::Error>> 
         if state.space().elements().len() != prev_count {
             state.arrange_windows();
         }
+
+        state.update_animation();
 
         let size = Size::from((output_mode.size.w, output_mode.size.h));
         let damage = Rectangle::from_size(size);
@@ -445,10 +454,10 @@ pub fn run_standalone(config: Config) -> Result<(), Box<dyn std::error::Error>> 
             TextureBuffer::from_memory(
                 &mut *r,
                 &wp.rgba,
-                Fourcc::Argb8888,
+                Fourcc::Abgr8888,
                 (wp.width as i32, wp.height as i32),
                 false,
-                1,
+                wp.width as i32,
                 Transform::Normal,
                 None,
             )

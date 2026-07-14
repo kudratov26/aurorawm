@@ -17,6 +17,10 @@ cargo build --release
 echo "Installing binary to /usr/local/bin..."
 install -Dm755 target/release/aurorawm /usr/local/bin/aurorawm
 
+# Install session script
+echo "Installing session script..."
+install -Dm755 aurorawm-session /usr/local/bin/aurorawm-session
+
 # Install desktop entry
 echo "Installing desktop entry..."
 mkdir -p /usr/share/wayland-sessions
